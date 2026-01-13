@@ -1,6 +1,5 @@
 import spacy
 import streamlit as st
-from spacy.cli import download
 
 @st.cache_resource
 def load_nlp():
