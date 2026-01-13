@@ -3,13 +3,10 @@ import streamlit as st
 
 @st.cache_resource
 def load_nlp():
-    try:
-        return spacy.load("en_core_web_sm")
-    except OSError:
-        download("en_core_web_sm")
-        return spacy.load("en_core_web_sm")
+    return spacy.load("en_core_web_sm")
 
 nlp = load_nlp()
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
