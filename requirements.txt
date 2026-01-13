@@ -7,3 +7,5 @@ scikit-learn
 PyPDF2
 plotly
 pandas
+
+en-core-web-sm==3.7.1
