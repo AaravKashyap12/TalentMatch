@@ -1,32 +1,12 @@
-# app.py 开头添加
-import subprocess
-import sys
-import spacy
-
-def download_spacy_model():
-    try:
-        spacy.load("en_core_web_sm")
-    except OSError:
-        print("Downloading spaCy model 'en_core_web_sm'...")
-        subprocess.check_call([sys.executable, "-m", "spacy", "download", "en_core_web_sm"])
-
-download_spacy_model()
-
-
-
 import streamlit as st
+import spacy
 
 @st.cache_resource
 def load_nlp():
-    try:
-        nlp = spacy.load("en_core_web_sm")
-    except OSError:
-        from spacy.cli import download
-        download("en_core_web_sm")
-        nlp = spacy.load("en_core_web_sm")
-    return nlp
+    return spacy.load("en_core_web_sm")
 
 nlp = load_nlp()
+
 
 import pandas as pd
 import plotly.express as px
