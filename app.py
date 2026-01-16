@@ -1,11 +1,18 @@
 import streamlit as st
 import spacy
 
+st.set_page_config(
+    page_title="TalentMatch",
+    page_icon="🎯",
+    layout="wide"
+)
+
 @st.cache_resource
 def load_nlp():
     return spacy.load("en_core_web_sm")
 
 nlp = load_nlp()
+
 
 
 import pandas as pd
@@ -16,7 +23,6 @@ from nlp_utils import clean_text
 from matcher import calculate_similarity, extract_skills, extract_experience, calculate_ats_score, calculate_component_scores
 
 # Page Configuration
-st.set_page_config(page_title="TalentMatch", page_icon="🎯", layout="wide")
 
 def display_pdf(file):
     """Embeds a PDF file object in the Streamlit app"""
