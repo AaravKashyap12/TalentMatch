@@ -276,6 +276,7 @@ def calculate_component_scores(job_desc, resumes_texts, job_desc_raw, resumes_ra
 def calculate_ats_score(resume_text, job_keywords=None):
     """
     ATS Quality Score (0–100)
+    Calibrated to match real ATS tools (especially for students / freshers)
     Compatible with existing app.py call
     """
 
@@ -287,30 +288,45 @@ def calculate_ats_score(resume_text, job_keywords=None):
     wc = len(words)
 
     # ---------------------------------
-    # 1️⃣ Skill Relevance (35%)
+    # 1️⃣ SKILL RELEVANCE (40%) – ATS SATURATION
     # ---------------------------------
     resume_skills = set(s.lower() for s in extract_skills(resume_text))
 
     if job_keywords:
         jd_skills = set(k.lower() for k in job_keywords)
         matched = resume_skills.intersection(jd_skills)
-        skill_score = len(matched) / max(1, len(jd_skills))
+
+        match_ratio = len(matched) / max(1, len(jd_skills))
+
+        # ATS-style saturation curve
+        if match_ratio >= 0.6:
+            skill_score = 1.0
+        elif match_ratio >= 0.4:
+            skill_score = 0.85
+        elif match_ratio >= 0.25:
+            skill_score = 0.7
+        else:
+            skill_score = match_ratio
     else:
         skill_score = min(1.0, len(resume_skills) / 8.0)
 
     skill_score = min(1.0, skill_score)
 
     # ---------------------------------
-    # 2️⃣ Resume Structure (20%)
+    # 2️⃣ RESUME STRUCTURE (20%)
     # ---------------------------------
     sections = [
-        "experience", "education", "skills",
-        "projects", "certifications", "summary"
+        "experience",
+        "education",
+        "skills",
+        "projects",
+        "certifications",
+        "summary"
     ]
     section_score = sum(1 for s in sections if s in text) / len(sections)
 
     # ---------------------------------
-    # 3️⃣ Experience Realism (20%)
+    # 3️⃣ EXPERIENCE REALISM (15%) – FRESHER SAFE
     # ---------------------------------
     exp_list = extract_experience(resume_text)
     years = 0.0
@@ -324,28 +340,28 @@ def calculate_ats_score(resume_text, job_keywords=None):
                 pass
 
     if years == 0:
-        exp_score = 0.6        # fresher baseline
+        exp_score = 0.6        # strong project-based fresher
     elif years <= 2:
-        exp_score = 0.6
+        exp_score = 0.7
     elif years <= 5:
         exp_score = 0.85
     else:
         exp_score = 1.0
 
     # ---------------------------------
-    # 4️⃣ Parseability & Length (15%)
+    # 4️⃣ PARSEABILITY & LENGTH (15%)
     # ---------------------------------
     if wc < 80:
-        parse_score = 0.2
+        parse_score = 0.3
     elif wc < 150:
-        parse_score = 0.5
+        parse_score = 0.6
     elif wc < 300:
-        parse_score = 0.8
+        parse_score = 0.85
     else:
         parse_score = 1.0
 
     # ---------------------------------
-    # 🔼 Project Strength Bonus
+    # 🔼 PROJECT STRENGTH BONUS (VERY IMPORTANT)
     # ---------------------------------
     project_keywords = [
         "designed", "implemented", "optimized", "scalable",
@@ -356,31 +372,31 @@ def calculate_ats_score(resume_text, job_keywords=None):
     project_hits = sum(1 for kw in project_keywords if kw in text)
 
     if project_hits >= 6:
-        project_bonus = 0.08
+        project_bonus = 0.12
     elif project_hits >= 3:
-        project_bonus = 0.05
+        project_bonus = 0.08
     else:
         project_bonus = 0.0
 
     # ---------------------------------
-    # 🚫 Penalties (max −20%)
+    # 🚫 PENALTIES (MAX −20%)
     # ---------------------------------
     penalty = 0.0
 
-    if wc < 60:
+    if wc < 60:                  # image / badly parsed PDF
         penalty += 0.1
-    if len(resume_skills) > 40:
+    if len(resume_skills) > 40:  # keyword stuffing
         penalty += 0.1
 
     penalty = min(0.2, penalty)
 
     # ---------------------------------
-    # 🎯 Final ATS Score
+    # 🎯 FINAL ATS SCORE
     # ---------------------------------
     final_score = (
-        0.35 * skill_score +
+        0.40 * skill_score +
         0.20 * section_score +
-        0.20 * exp_score +
+        0.15 * exp_score +
         0.15 * parse_score
     )
 
