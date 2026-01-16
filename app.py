@@ -27,20 +27,12 @@ from matcher import calculate_similarity, extract_skills, extract_experience, ca
 import base64
 import streamlit.components.v1 as components
 
+from streamlit_pdf_viewer import pdf_viewer
+
 def display_pdf(file):
     file.seek(0)
-    base64_pdf = base64.b64encode(file.read()).decode("utf-8")
+    pdf_viewer(file.read(), height=700)
 
-    pdf_viewer = f"""
-    <iframe
-        src="https://mozilla.github.io/pdf.js/web/viewer.html?file=data:application/pdf;base64,{base64_pdf}"
-        width="100%"
-        height="700px"
-        style="border: none;"
-    ></iframe>
-    """
-
-    components.html(pdf_viewer, height=700, scrolling=True)
 
 
 
