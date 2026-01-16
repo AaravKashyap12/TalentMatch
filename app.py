@@ -25,13 +25,14 @@ from matcher import calculate_similarity, extract_skills, extract_experience, ca
 # Page Configuration
 
 def display_pdf(file):
-    """Embeds a PDF file object in the Streamlit app"""
-    # Read file content
     file.seek(0)
-    base64_pdf = base64.b64encode(file.read()).decode('utf-8')
-    # Embed PDF in an iframe
-    pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="600" type="application/pdf"></iframe>'
-    st.markdown(pdf_display, unsafe_allow_html=True)
+    st.download_button(
+        label="📄 Open Resume PDF",
+        data=file.read(),
+        file_name=file.name,
+        mime="application/pdf"
+    )
+
 
 # Custom Professional CSS (Dark Mode Compatible)
 st.markdown("""
