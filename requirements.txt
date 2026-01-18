@@ -1,5 +1,7 @@
-streamlit==1.35.0
-rich==13.7.1
+fastapi
+uvicorn
+python-multipart
+pydantic
 
 spacy==3.7.2
 thinc==8.2.2
@@ -9,8 +11,5 @@ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1
 
 nltk
 scikit-learn
-pandas
-plotly
 PyPDF2
-matplotlib
-streamlit-pdf-viewer
+python-dateutil
