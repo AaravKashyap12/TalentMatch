@@ -1,14 +1,15 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from typing import List
 
-from api.resume_parser import extract_text_from_pdf
-from api.schemas import ScanResponse, CandidateResult
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+
 from api.constants import PRIORITY_MAP
+from api.resume_parser import extract_text_from_pdf
+from api.schemas import CandidateResult, ScanResponse
 from ml.matcher import (
-    calculate_component_scores,
-    extract_skills,
-    extract_experience,
     calculate_ats_score,
+    calculate_component_scores,
+    extract_experience,
+    extract_skills,
 )
 from ml.nlp_utils import clean_text
 
@@ -24,7 +25,7 @@ def scan_pdf(
     relevance_priority: str = Form("Low"),
     files: List[UploadFile] = File(...),
 ):
-    if not files or len(files) == 0:
+    if not files:
         raise HTTPException(
             status_code=400,
             detail="At least one resume PDF is required",
@@ -39,12 +40,13 @@ def scan_pdf(
     raw_resumes: List[str] = []
     cleaned_resumes: List[str] = []
 
-    for f in files:
-        text = extract_text_from_pdf(f.file)
+    for file in files:
+        text = extract_text_from_pdf(file.file)
+
         if not text.strip():
             raise HTTPException(
                 status_code=400,
-                detail=f"Could not extract text from {f.filename}",
+                detail=f"Could not extract text from {file.filename}",
             )
 
         raw_resumes.append(text)
@@ -62,7 +64,10 @@ def scan_pdf(
     except KeyError:
         raise HTTPException(
             status_code=400,
-            detail="Invalid priority value. Must be one of Ignore | Low | Medium | High | Critical",
+            detail=(
+                "Invalid priority value. Must be one of "
+                "Ignore | Low | Medium | High | Critical"
+            ),
         )
 
     component_scores = calculate_component_scores(
@@ -74,20 +79,19 @@ def scan_pdf(
     )
 
     jd_skills = set(extract_skills(job_description))
-
     results: List[CandidateResult] = []
 
-    for i, base in enumerate(component_scores):
-        resume_text = raw_resumes[i]
+    for index, base in enumerate(component_scores):
+        resume_text = raw_resumes[index]
 
         resume_skills = set(extract_skills(resume_text))
-        matched = jd_skills.intersection(resume_skills)
+        matched_skills = jd_skills.intersection(resume_skills)
 
         experience_list = extract_experience(resume_text)
-        experience_str = ", ".join(experience_list) if experience_list else "0 Years"
+        experience = ", ".join(experience_list) if experience_list else "0 Years"
 
         ats_score = calculate_ats_score(
-            cleaned_resumes[i],
+            cleaned_resumes[index],
             job_keywords=jd_skills,
         )
 
@@ -99,9 +103,9 @@ def scan_pdf(
                 edu_score=base["edu_score"],
                 relevance_score=base["relevance_score"],
                 ats_score=ats_score,
-                matched_skills_count=len(matched),
-                matched_skills=list(matched),
-                experience=experience_str,
+                matched_skills_count=len(matched_skills),
+                matched_skills=list(matched_skills),
+                experience=experience,
             )
         )
 

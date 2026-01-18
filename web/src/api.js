@@ -1,34 +1,31 @@
-const BASE_URL = "http://127.0.0.1:8000/api/v1";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-/**
- * Scan resumes using TalentMatch backend
- */
+if (!BASE_URL) {
+  throw new Error("VITE_API_BASE_URL is not defined");
+}
+
 export async function scanResumes({ jobDescription, files, priorities }) {
   const formData = new FormData();
 
-  // Required
   formData.append("job_description", jobDescription);
-
-  // Optional priorities (must match backend names exactly)
   formData.append("skills_priority", priorities.skills);
   formData.append("experience_priority", priorities.experience);
   formData.append("education_priority", priorities.education);
   formData.append("relevance_priority", priorities.relevance);
 
-  // Files
   files.forEach((file) => {
     formData.append("files", file);
   });
 
-  const res = await fetch("http://127.0.0.1:8000/api/v1/scan/pdf", {
+  const response = await fetch(`${BASE_URL}/scan/pdf`, {
     method: "POST",
-    body: formData, // IMPORTANT: no headers
+    body: formData,
   });
 
-  if (!res.ok) {
-    const err = await res.json();
-    throw err;
+  if (!response.ok) {
+    const error = await response.json();
+    throw error;
   }
 
-  return res.json();
+  return response.json();
 }

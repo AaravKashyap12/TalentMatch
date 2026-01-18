@@ -1,11 +1,11 @@
-/* eslint-disable no-unused-vars */
 import { useState } from "react";
-import Sidebar from "../components/Sidebar";
-import ResultsTable from "../components/ResultsTable";
-import ResultsChart from "../components/ResultsChart";
-import { scanResumes } from "../api.js";
 
-// --- Sub-components for Clean Layout ---
+import Sidebar from "../components/Sidebar";
+import ResultsChart from "../components/ResultsChart";
+import ResultsTable from "../components/ResultsTable";
+import { scanResumes } from "../api";
+
+// --- Sub-components ---
 
 function Metric({ label, value, subtext }) {
   return (
@@ -70,33 +70,34 @@ function WelcomeState() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full text-left">
-        <div className="p-5 bg-white border border-slate-200 shadow-sm">
-          <div className="w-8 h-8 bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold mb-3 rounded-none">
-            1
+        {[
+          {
+            step: 1,
+            title: "Define Role",
+            text: "Paste your JD to set the context for the AI ranking engine.",
+          },
+          {
+            step: 2,
+            title: "Upload CVs",
+            text: "Bulk upload PDF resumes. We handle the parsing automatically.",
+          },
+          {
+            step: 3,
+            title: "Analyze",
+            text: "Get instant visual rankings and deep-dive analytics.",
+          },
+        ].map(({ step, title, text }) => (
+          <div
+            key={step}
+            className="p-5 bg-white border border-slate-200 shadow-sm"
+          >
+            <div className="w-8 h-8 bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold mb-3">
+              {step}
+            </div>
+            <h3 className="font-semibold text-slate-900">{title}</h3>
+            <p className="text-sm text-slate-500 mt-1">{text}</p>
           </div>
-          <h3 className="font-semibold text-slate-900">Define Role</h3>
-          <p className="text-sm text-slate-500 mt-1">
-            Paste your JD to set the context for the AI ranking engine.
-          </p>
-        </div>
-        <div className="p-5 bg-white border border-slate-200 shadow-sm">
-          <div className="w-8 h-8 bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold mb-3 rounded-none">
-            2
-          </div>
-          <h3 className="font-semibold text-slate-900">Upload CVs</h3>
-          <p className="text-sm text-slate-500 mt-1">
-            Bulk upload PDF resumes. We handle the parsing automatically.
-          </p>
-        </div>
-        <div className="p-5 bg-white border border-slate-200 shadow-sm">
-          <div className="w-8 h-8 bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold mb-3 rounded-none">
-            3
-          </div>
-          <h3 className="font-semibold text-slate-900">Analyze</h3>
-          <p className="text-sm text-slate-500 mt-1">
-            Get instant visual rankings and deep-dive analytics.
-          </p>
-        </div>
+        ))}
       </div>
     </div>
   );
@@ -104,6 +105,7 @@ function WelcomeState() {
 
 function ErrorBanner({ message, onClose }) {
   if (!message) return null;
+
   return (
     <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 flex justify-between items-center">
       <div className="text-red-700 text-sm font-medium">{message}</div>
@@ -136,19 +138,23 @@ export default function Home() {
 
   async function handleAnalyze() {
     setError(null);
+
     if (!jobDescription.trim()) {
       setError("Please provide a Job Description to begin analysis.");
       return;
     }
+
     if (files.length === 0) {
       setError("Please upload at least one resume PDF.");
       return;
     }
 
     setLoading(true);
+
     try {
       const res = await scanResumes({ jobDescription, files, priorities });
-      if (res && res.results) {
+
+      if (res?.results) {
         setResults(res.results.slice(0, topN));
       } else {
         throw new Error("Invalid response format");
@@ -165,16 +171,17 @@ export default function Home() {
 
   function downloadCSV() {
     if (!results) return;
+
     const csv =
       "data:text/csv;charset=utf-8," +
       Object.keys(results[0]).join(",") +
       "\n" +
       results.map((r) => Object.values(r).join(",")).join("\n");
 
-    const a = document.createElement("a");
-    a.href = encodeURI(csv);
-    a.download = "TalentMatch_Report.csv";
-    a.click();
+    const link = document.createElement("a");
+    link.href = encodeURI(csv);
+    link.download = "TalentMatch_Report.csv";
+    link.click();
   }
 
   return (
@@ -209,12 +216,13 @@ export default function Home() {
                     Ranking based on{" "}
                     {
                       Object.entries(priorities).filter(
-                        ([_, v]) => v !== "Ignore",
+                        ([, value]) => value !== "Ignore",
                       ).length
                     }{" "}
                     active criteria
                   </p>
                 </div>
+
                 <div className="flex gap-3">
                   <button
                     onClick={() => setResults(null)}

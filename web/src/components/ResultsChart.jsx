@@ -1,35 +1,41 @@
 import {
-  BarChart,
   Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
 } from "recharts";
 
-const CustomTooltip = ({ active, payload }) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-white border border-slate-200 p-3 shadow-md min-w-[120px]">
-        <p className="text-xs font-bold text-slate-400 uppercase mb-1">
-          {payload[0].payload.name}
-        </p>
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-indigo-600"></div>
-          <p className="text-sm font-bold text-slate-900">
-            {payload[0].value}% Match
-          </p>
-        </div>
-      </div>
-    );
+function CustomTooltip({ active, payload }) {
+  if (!active || !payload || !payload.length) {
+    return null;
   }
-  return null;
-};
+
+  const { name } = payload[0].payload;
+  const value = payload[0].value;
+
+  return (
+    <div className="bg-white border border-slate-200 p-3 shadow-md min-w-[120px]">
+      <p className="text-xs font-bold text-slate-400 uppercase mb-1">{name}</p>
+      <div className="flex items-center gap-2">
+        <div className="w-2 h-2 bg-indigo-600" />
+        <p className="text-sm font-bold text-slate-900">{value}% Match</p>
+      </div>
+    </div>
+  );
+}
 
 export default function ResultsChart({ results }) {
-  const data = results.map((r, i) => ({
-    name: r.candidate_name ? r.candidate_name.split(" ")[0] : `Cand. ${i + 1}`,
+  if (!results || results.length === 0) {
+    return null;
+  }
+
+  const data = results.map((r, index) => ({
+    name: r.candidate_name
+      ? r.candidate_name.split(" ")[0]
+      : `Cand. ${index + 1}`,
     score: r.final_score,
   }));
 
@@ -71,7 +77,7 @@ export default function ResultsChart({ results }) {
             <Tooltip content={<CustomTooltip />} cursor={{ fill: "#f8fafc" }} />
             <Bar
               dataKey="score"
-              fill="#4f46e5" /* Indigo-600 */
+              fill="#4f46e5"
               activeBar={{ fill: "#4338ca" }}
             />
           </BarChart>

@@ -1,5 +1,7 @@
-from pydantic import BaseModel, Field
 from typing import List, Literal
+
+from pydantic import BaseModel, Field
+
 
 Priority = Literal["Ignore", "Low", "Medium", "High", "Critical"]
 
@@ -17,7 +19,6 @@ class CandidateResult(BaseModel):
     exp_score: float
     edu_score: float
     relevance_score: float
-
     ats_score: float
     matched_skills_count: int
     matched_skills: List[str]

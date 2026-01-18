@@ -14,6 +14,7 @@ export default function Sidebar({
 }) {
   function handleFileChange(e) {
     const selectedFiles = Array.from(e.target.files);
+
     setFiles((prev) => {
       const existingNames = new Set(prev.map((f) => f.name));
       return [
@@ -21,22 +22,20 @@ export default function Sidebar({
         ...selectedFiles.filter((f) => !existingNames.has(f.name)),
       ];
     });
+
     e.target.value = "";
   }
 
   return (
     <aside className="w-80 bg-white border-r border-slate-200 flex flex-col h-full shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10">
-      {/* Header */}
       <div className="p-6 border-b border-slate-100">
         <h2 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
-          <span className="w-2 h-6 bg-indigo-600 inline-block"></span>
+          <span className="w-2 h-6 bg-indigo-600 inline-block" />
           TalentMatch
         </h2>
       </div>
 
-      {/* Scrollable Form Content */}
       <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
-        {/* Job Description */}
         <div className="space-y-3">
           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
             Job Context
@@ -49,7 +48,6 @@ export default function Sidebar({
           />
         </div>
 
-        {/* Files */}
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
@@ -70,6 +68,7 @@ export default function Sidebar({
             onChange={handleFileChange}
             className="hidden"
           />
+
           <label
             htmlFor="resume-upload"
             className="group cursor-pointer flex flex-col items-center justify-center border border-slate-300 border-dashed bg-slate-50 p-6 hover:bg-slate-100 hover:border-slate-400 transition-all"
@@ -90,10 +89,11 @@ export default function Sidebar({
                   Clear All
                 </button>
               </div>
+
               <div className="max-h-32 overflow-y-auto pr-1 space-y-1">
-                {files.map((file, i) => (
+                {files.map((file, index) => (
                   <div
-                    key={i}
+                    key={index}
                     className="text-xs text-slate-600 bg-slate-50 px-2 py-1.5 border border-slate-100 truncate"
                   >
                     {file.name}
@@ -104,11 +104,11 @@ export default function Sidebar({
           )}
         </div>
 
-        {/* Priorities */}
         <div className="space-y-4">
           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
             Ranking Weights
           </label>
+
           <div className="grid grid-cols-1 gap-3">
             {[
               ["skills", "Skills Match"],
@@ -137,7 +137,6 @@ export default function Sidebar({
           </div>
         </div>
 
-        {/* Max Candidates */}
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
@@ -145,6 +144,7 @@ export default function Sidebar({
             </label>
             <span className="text-xs font-bold text-indigo-600">{topN}</span>
           </div>
+
           <input
             type="range"
             min={1}
@@ -156,7 +156,6 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* Footer Action */}
       <div className="p-6 border-t border-slate-100 bg-slate-50">
         <button
           onClick={onAnalyze}
