@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+python-multipart
+pydantic
+
+spacy
+thinc
+numpy
+
+
+nltk
+scikit-learn
+PyPDF2
+python-dateutil
