@@ -88,7 +88,7 @@ Scores are normalized into a **stable 0–100 match score**, regardless of confi
 
 ```
 TalentMatch/
-├── backend/          # FastAPI application (API contract)
+├── api/              # FastAPI application (API contract)
 │   ├── main.py
 │   ├── routes.py
 │   ├── schemas.py
@@ -103,11 +103,10 @@ TalentMatch/
 │   ├── src/
 │   │   ├── pages/
 │   │   ├── components/
-│   │   └── api/
+│   │   └── api.js
 │   └── tailwind.config.js
 │
-├── tests/            # ML & scoring validation
-│   └── test_matcher.py
+├── test_real_resumes.py
 │
 ├── requirements.txt
 └── README.md
@@ -151,11 +150,17 @@ The API is **stable and versioned**, making it safe for multiple clients.
 
 ```bash
 python -m venv .venv
+
+# Windows
+.\.venv\Scripts\activate
+
+# macOS/Linux
 source .venv/bin/activate
+
 pip install -r requirements.txt
 python -m spacy download en_core_web_sm
 
-uvicorn backend.main:app --reload
+python -m uvicorn api.main:app --reload
 ```
 
 API available at:

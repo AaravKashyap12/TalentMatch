@@ -14,6 +14,7 @@ class RankingWeights(BaseModel):
 
 
 class CandidateResult(BaseModel):
+    filename: str
     final_score: float
     skills_score: float
     exp_score: float

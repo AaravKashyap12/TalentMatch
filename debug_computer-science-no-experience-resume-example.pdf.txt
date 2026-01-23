@@ -1,0 +1,64 @@
+MADISON LEWIS
+Web Developer
+madison.lewis@email.com (123) 456-7890 Hanover, NH
+LinkedIn
+WORK EXPERIENCE
+Technical Support
+Mascoma Bank
+November 2022 - current Hanover, NH
+Reduced case resolution time by 28% by leveraging Visual Studio
+Code to debug and solve software-related customer complaints.
+Increased team productivity by 21% by developing a JavaScript-
+based internal tool that automated repetitive tech support tasks.
+Guided the transition from manual testing to Selenium-based
+automated testing, reducing testing time by 39% on average.
+Led weekly technical training sessions for non-technical bank staff
+that reduced internal support tickets by 16%.
+Ofﬁce Assistant
+Hypertherm
+September 2021 - September 2022 Hanover, NH
+Enabled more informed decision-making by preparing 35+ weekly
+reports for senior management.
+Cut paper use in half by promoting and demonstrating digital
+solutions for record-keeping and communication.
+Coordinated travel arrangements for 7 C-suite executives and
+reduced travel costs through strategic and timely bookings.
+Conducted initial screening for 150+ job applications, reducing the
+workload of the HR team.
+PROJECTS
+Visiofolio
+Designer and Developer
+Designed and developed a personal portfolio website with a user-
+friendly interface that attracted 650+ unique monthly visitors.
+Used JavaScript to create dynamic and interactive features, which
+boosted user engagement by 37%.
+Improved cross-platform user engagement by integrating social
+media platforms into the website.
+Set up and integrated Google Analytics to track and analyze user
+behavior to inform website enhancements.CAREER
+OBJECTIVE
+With solid JavaScript and Visual Studio
+Code knowledge, I'm seeking a web
+developer position at Enﬁeld
+Technologies. Looking to apply these
+skills to enhance the company's digital
+presence and assist in developing state-
+of-the-art web applications.
+EDUCATION
+M.S.
+Computer Science
+Dartmouth College
+2021 - 2023
+Hanover, NH
+B.S.
+Computer Science
+Dartmouth College
+2017 - 2021
+Hanover, NH
+SKILLS
+JavaScript 
+Visual Studio Code
+Git
+TensorFlow
+Selenium (automated testing)
+Docker

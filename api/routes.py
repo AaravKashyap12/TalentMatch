@@ -39,6 +39,7 @@ def scan_pdf(
 
     raw_resumes: List[str] = []
     cleaned_resumes: List[str] = []
+    filenames: List[str] = []
 
     for file in files:
         text = extract_text_from_pdf(file.file)
@@ -51,6 +52,7 @@ def scan_pdf(
 
         raw_resumes.append(text)
         cleaned_resumes.append(clean_text(text))
+        filenames.append(file.filename)
 
     cleaned_jd = clean_text(job_description)
 
@@ -97,6 +99,7 @@ def scan_pdf(
 
         results.append(
             CandidateResult(
+                filename=filenames[index],
                 final_score=base["final_score"],
                 skills_score=base["skills_score"],
                 exp_score=base["exp_score"],

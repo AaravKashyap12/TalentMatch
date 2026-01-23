@@ -1,0 +1,56 @@
+ARABELLA WHITAKER
+Computer Technician
+a.whitaker@email.com (123) 456-7890 Seattle, WA
+LinkedIn
+WORK EXPERIENCE
+Computer Technician
+Expedia Group
+2021 - current Seattle, WA
+Diagnosed and resolved hardware and software issues for
+employees, achieving a 98% resolution rate.
+Set up and conﬁgured over 202 computer systems, which
+enhanced optim al functionality by 74%.
+Implemented McAfee Endpoint Security, reducing
+security incidents by 54% within the ﬁrst quarter.
+Utilized Acronis True Image for seamless data backup and
+recovery, resulting in a 99% data recovery rate.
+IT Support Specialist
+Nordstrom  
+2018 - 2021 Seattle, WA
+Provided comprehensive technical support to Nordstrom's
+staff, ensuring minimal downtime and 99% customer
+satisfaction.
+Deployed Microsoft Windows 10 updates and patches,
+which im proved system  stability by 64%.
+Managed and maintained IT infrastructure, resulting in a
+97% uptime for critical systems.
+Conducted regular hardware diagnostics using
+Memtest86, ensuring reliable performance for all
+computers.
+Help Desk Technician
+Tableau Software
+2015 - 2018 Seattle, WA
+Resolved complex software issues for Tableau Software
+customers, achieving a 92% customer issue resolution rate.
+Documented and streamlined troubleshooting processes,
+which reduced average resolution tim e by 41%.
+Assisted in the development of customer support
+materials, increasing user satisfaction by 54%.
+Used Wireshark for in-depth network analysis, identifying
+and mitigating potential security threats.EDUCATION
+Bachelor of Science
+Computer Science
+University of W ashington
+2011 - 2015
+Seattle, WA
+SKILLS
+Microsoft Windows 10
+Memtest86
+TeamViewer
+McAfee Endpoint Security
+Acronis True Image
+Recuva
+Wireshark
+HWiNFO
+VMware Workstation
+PowerShell

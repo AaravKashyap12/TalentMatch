@@ -155,7 +155,7 @@ export default function Home() {
       const res = await scanResumes({ jobDescription, files, priorities });
 
       if (res?.results) {
-        setResults(res.results.slice(0, topN));
+        setResults(res.results); // Pass all results, don't slice
       } else {
         throw new Error("Invalid response format");
       }
@@ -172,16 +172,57 @@ export default function Home() {
   function downloadCSV() {
     if (!results) return;
 
-    const csv =
-      "data:text/csv;charset=utf-8," +
-      Object.keys(results[0]).join(",") +
-      "\n" +
-      results.map((r) => Object.values(r).join(",")).join("\n");
+    // Define headers matching the ResultsTable
+    const headers = [
+      "Rank",
+      "Candidate Name",
+      "Final Match %",
+      "ATS Score %",
+      "Skills Match Count",
+      "Experience",
+      "Matched Skills",
+      "Skills Score",
+      "Experience Score",
+      "Education Score",
+      "Relevance Score"
+    ];
+
+    // Helper to escape CSV fields
+    const escapeCsv = (val) => {
+      if (val === null || val === undefined) return "";
+      const str = String(val);
+      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const rows = results.map((r, index) => {
+      return [
+        index + 1,
+        r.filename ?? r.candidate_name ?? "Unknown",
+        r.final_score,
+        r.ats_score,
+        r.matched_skills_count,
+        r.experience,
+        r.matched_skills ? r.matched_skills.join(" | ") : "", // Join array to avoid breaking CSV
+        r.skills_score,
+        r.exp_score,
+        r.edu_score,
+        r.relevance_score
+      ].map(escapeCsv).join(",");
+    });
+
+    const csvContent = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
 
     const link = document.createElement("a");
-    link.href = encodeURI(csv);
-    link.download = "TalentMatch_Report.csv";
+    link.href = url;
+    link.setAttribute("download", "TalentMatch_Report.csv");
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
   }
 
   return (
@@ -241,12 +282,12 @@ export default function Home() {
 
               <Metrics results={results} />
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-                <div className="lg:col-span-2">
-                  <ResultsTable results={results} />
+              <div className="flex flex-col gap-8 mb-8">
+                <div className="w-full">
+                  <ResultsTable results={results.slice(0, topN)} />
                 </div>
-                <div className="lg:col-span-1">
-                  <ResultsChart results={results} />
+                <div className="w-full h-96">
+                  <ResultsChart results={results.slice(0, topN)} priorities={priorities} />
                 </div>
               </div>
             </div>

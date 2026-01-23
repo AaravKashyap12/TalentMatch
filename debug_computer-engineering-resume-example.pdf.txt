@@ -1,0 +1,65 @@
+LANDON
+W INSLOW
+Computer Engineer
+l.winslow@email.com
+(123) 456-7890
+Malvern, PA
+LinkedIn
+EDUCATION
+Bachelor of Science
+Electrical and Computer
+Engineering
+Carnegie Mellon University
+2008 - 2012
+Pittsburgh, PA
+SKILLS
+Visual Studio Code
+Git
+Xilinx Vivado
+MATLAB
+AutoCAD
+VHDL
+Wireshark
+Arduino IDE
+VMware
+JUnitW ORK EXPERIENCE
+Computer Engineer
+Siemens Healthineers
+2018 - current Malvern, PA
+Designed and implemented software enhancements using Visual
+Studio Code, resulting in a 67% reduction in system response
+time
+Leveraged Git for version control and achieved a 98% codebase
+accuracy rate
+Optimized FPGA designs with Xilinx Vivado, leading to an 89%
+decrease in resource utilization while maintaining system
+performance
+Developed MATLAB scripts for data analysis, which improved
+data processing speed by 63% and enhancing overall data
+accuracy
+Systems Analyst
+PPG Industries
+2015 - 2018 Pittsburgh, PA
+Conducted comprehensive system analysis, identifying and
+rectifying ineﬃciencies, which led to a 76% improvement in
+workﬂow eﬃciency
+Collaborated with cross-functional teams to implement
+Wireshark network monitoring, reducing network downtime by
+72%
+Integrated Arduino IDE for automated equipment control,
+resulting in a 27% reduction in production errors
+Assisted in the migration to VMware virtualization and reducing
+hardware costs by 18% and enhancing scalability
+IT Support Specialist
+UPMC
+2012 - 2015 Pittsburgh, PA
+Implemented JUnit testing framework that improved software
+reliability and reducing critical bugs by 64%
+Utilized AutoCAD to create detailed technical drawings,
+contributing to a 74% increase in design precision and
+manufacturability
+Employed VHDL-based hardware modules, which resulted in a
+76% reduction in power consumption and enhanced system
+reliability
+Managed and maintained VMware virtualization infrastructure,
+ensuring 99.9% uptime for critical systems

@@ -58,11 +58,10 @@ export default function ResultsTable({ results }) {
                 >
                   <td className="py-4 px-4">
                     <div
-                      className={`w-7 h-7 flex items-center justify-center text-xs font-bold rounded ${
-                        index === 0
+                      className={`w-7 h-7 flex items-center justify-center text-xs font-bold rounded ${index === 0
                           ? "bg-indigo-100 text-indigo-700"
                           : "bg-slate-100 text-slate-600"
-                      }`}
+                        }`}
                     >
                       {index + 1}
                     </div>
@@ -70,7 +69,7 @@ export default function ResultsTable({ results }) {
 
                   <td className="py-4 px-4 sticky left-0 bg-white z-10">
                     <div className="font-semibold text-slate-900 text-sm">
-                      {r.candidate_name ?? `Candidate ${index + 1}`}
+                      {r.filename ?? r.candidate_name ?? `Candidate ${index + 1}`}
                     </div>
                     <div className="text-xs text-slate-400">
                       ATS: {r.ats_score}%
