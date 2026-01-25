@@ -1,6 +1,6 @@
 # TalentMatch 🎯
 
-### AI-Powered Resume Screening & Candidate Ranking Platform
+### NLP-Powered Resume Screening & Candidate Ranking Platform
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688)
@@ -12,65 +12,59 @@
 
 ## Overview
 
-**TalentMatch** is a full-stack, AI-driven **Applicant Tracking & Resume Intelligence system** built for modern **Computer Science & Engineering hiring**.
+**TalentMatch** is a full-stack, **NLP-driven Applicant Tracking & Resume Intelligence system** built for modern **Computer Science & Engineering hiring**.
 
-Unlike naive keyword-based ATS tools, TalentMatch combines:
+Unlike opaque "AI" black-box tools, TalentMatch uses a **transparent, deterministic scoring engine** combining:
 
-- **NLP-based parsing**
-- **Section-aware experience extraction**
-- **Weighted, explainable scoring**
-- **Recruiter-controlled ranking priorities**
+- **Linguistic Parsing**: Spacy-based NLP for accurate text cleaning and lemmatization.
+- **Statistical Matching**: TF-IDF vector space modeling to measure semantic relevance.
+- **Heuristic Extraction**: Robust Regex patterns for precision extraction of years of experience and education.
+- **Weighted Logic**: Explainable, recruiter-defined scoring priorities.
 
 The system is architected as a **cleanly separated platform**:
 
-- **FastAPI backend** → authoritative scoring & ML logic
-- **React + Tailwind frontend** → production-grade UI
-- **Reusable ML core** → independent of UI or transport layer
+- **FastAPI backend** → Authoritative scoring & ML logic
+- **React + Tailwind frontend** → Production-grade UI
+- **Reusable ML core** → Independent of UI or transport layer
 
 ---
 
 ## Core Capabilities
 
-### 🧠 Intelligent Resume Parsing
+### 🧠 Intelligent Parsing Engine
 
-- Section-aware extraction (Experience ≠ Projects ≠ Education)
-- Robust date parsing (`2019–Present`, `Jan 2020 – Mar 2023`, etc.)
-- CS-specific skill ontology (Backend, DevOps, ML, Data, Cloud, Security)
-- PDF-native parsing (no manual text cleanup required)
+- **Deterministic Extraction**: Uses pattern matching rules to verify Experience vs. Projects vs. Education (preventing "fake" experience).
+- **Robust Date Parsing**: Normalizes diverse date formats (`2019–Present`, `Jan 2020 – Mar 2023`) to calculate exact tenure.
+- **CS-Specific Ontology**: Specialized in detecting technical stacks (Backend, DevOps, ML, Data, Cloud).
+- **PDF-Native**: Extracts raw text directly from PDF binary streams.
 
 ---
 
 ### ⚖️ Weighted Ranking Engine
 
-Recruiters can dynamically control ranking behavior using **priority levels**:
+Recruiters can dynamically control ranking behavior using **priority levels**. The system calculates a final score based on a weighted sum of four deterministic components:
 
-| Factor          | Description                                             |
-| --------------- | ------------------------------------------------------- |
-| 🧠 Skills Match | Overlap with job-critical technical skills              |
-| 📅 Experience   | Real professional experience (not inflated by projects) |
-| 🎓 Education    | Degree relevance & level                                |
-| 📝 Relevance    | Semantic similarity between JD and resume content       |
+| Factor          | Method                                                  | Description                                             |
+| --------------- | ------------------------------------------------------- | ------------------------------------------------------- |
+| 🧠 Skills Match | **Set Intersection**                                    | Exact overlap with job-critical technical skills        |
+| 📅 Experience   | **Regex Heuristics**                                    | Calculated professional tenure (years)                  |
+| 🎓 Education    | **Keyword Matching**                                    | Degree level detection (PhD > Master > Bachelor)        |
+| 📝 Relevance    | **TF-IDF Cosine Similarity**                            | Statistical similarity between Resume and JD text       |
 
 Each factor supports:
 `Ignore · Low · Medium · High · Critical`
 
-Scores are normalized into a **stable 0–100 match score**, regardless of configuration.
+Scores are normalized into a **stable 0–100 match score**, providing full explainability for every ranking decision.
 
 ---
 
 ### 📊 ATS & Analytics
 
-- **Final Match Score**
-- **ATS Visibility Score**
-- Component-level breakdown (Skills / Exp / Edu / Relevance)
-- Aggregate metrics:
-  - Top Match
-  - Average Score
-  - Total Candidates
-  - Avg / Top / Median ATS
-
-- Interactive comparison charts
-- Full CSV export for offline review
+- **Final Match Score**: Aggregated weighted score.
+- **ATS Visibility Score**: Heuristic check for keyword density and formatting parsing friendliness.
+- **Deep-Dive Metrics**: Breakdown of Skills, Experience, Education, and Relevance scores.
+- **Interactive Charts**: Visual comparison of candidates.
+- **CSV Export**: Full data dump for offline analysis.
 
 ---
 
@@ -90,23 +84,18 @@ Scores are normalized into a **stable 0–100 match score**, regardless of confi
 TalentMatch/
 ├── api/              # FastAPI application (API contract)
 │   ├── main.py
-│   ├── routes.py
-│   ├── schemas.py
-│   ├── constants.py
-│   └── resume_parser.py
+│   ├── routes.py     # Endpoints orchestration
+│   └── resume_parser.py # PyPDF2 extraction
 │
-├── ml/               # Core ML / NLP logic (UI-agnostic)
-│   ├── matcher.py
-│   └── nlp_utils.py
+├── ml/               # Core Logic
+│   ├── matcher.py    # Scoring Engine (Regex + TF-IDF)
+│   └── nlp_utils.py  # Spacy text processing
 │
 ├── web/              # React + Vite + Tailwind frontend
 │   ├── src/
 │   │   ├── pages/
-│   │   ├── components/
-│   │   └── api.js
+│   │   └── components/
 │   └── tailwind.config.js
-│
-├── test_real_resumes.py
 │
 ├── requirements.txt
 └── README.md
@@ -114,8 +103,7 @@ TalentMatch/
 
 **Key design principle:**
 
-> All business logic lives in the backend + ML layer.
-> The frontend is a pure consumer of the API.
+> **No hallucinations.** The system provides raw, evidence-based metrics, not generative summaries.
 
 ---
 
@@ -184,19 +172,16 @@ Frontend available at:
 ## Development Status
 
 - ✅ Backend API complete
-- ✅ ML scoring engine stable
+- ✅ Scoring engine stable (TF-IDF/Regex)
 - ✅ React UI feature-parity achieved
-- ✅ Streamlit legacy UI retired
 - 🔜 Deployment (Vercel + Render/Fly.io)
 - 🔜 Authentication & saved analyses
-- 🔜 Role-specific scoring presets
 
 ---
 
 ## Design Philosophy
 
-- **Explainability > black-box scores**
-- **Separation of concerns**
+- **Explainability > "Magic"**
+- **Deterministic scoring**
 - **Backend-driven intelligence**
-- **UI parity with real recruiter workflows**
 - **Production-first architecture**
