@@ -1,42 +1,121 @@
+"""
+Core scoring and extraction engine for TalentMatch.
+"""
+
 import re
 from datetime import datetime
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 
+# ---------------------------------------------------------------------------
+# SKILLS DATABASE  (expanded)
+# ---------------------------------------------------------------------------
+
 SKILLS_DB = [
+    # Languages
     "python", "java", "c++", "c", "c#", "javascript", "typescript", "go",
     "rust", "swift", "kotlin", "php", "ruby", "scala", "r", "matlab",
-    "html", "css", "react", "angular", "vue", "node.js", "next.js",
-    "django", "flask", "fastapi", "spring boot",
+    "perl", "bash", "shell", "powershell", "dart", "elixir", "haskell",
+    "lua", "groovy", "assembly",
+
+    # Web / Frontend
+    "html", "css", "react", "angular", "vue", "svelte", "next.js", "nuxt",
+    "gatsby", "remix", "tailwind", "tailwindcss", "bootstrap", "sass",
+    "scss", "webpack", "vite", "babel", "jquery",
+
+    # Backend / Frameworks
+    "node.js", "express", "nestjs", "django", "flask", "fastapi",
+    "spring boot", "spring", "rails", "laravel", "asp.net", "dotnet",
+    "graphql", "rest api", "grpc", "websocket",
+
+    # ML / AI / Data Science
     "machine learning", "deep learning", "data science", "nlp",
-    "tensorflow", "pytorch", "scikit-learn", "pandas", "numpy",
-    "aws", "azure", "gcp", "docker", "kubernetes", "terraform",
-    "ci/cd", "linux", "git", "github",
-    "sql", "nosql", "mongodb", "postgresql", "mysql", "redis",
-    "data structures", "algorithms", "system design", "oop"
+    "natural language processing", "computer vision", "reinforcement learning",
+    "tensorflow", "pytorch", "keras", "scikit-learn", "pandas", "numpy",
+    "scipy", "matplotlib", "seaborn", "xgboost", "lightgbm", "catboost",
+    "hugging face", "transformers", "langchain", "openai", "llm",
+    "generative ai", "rag", "embeddings", "mlflow", "airflow", "spark",
+    "hadoop", "hive", "tableau", "power bi",
+
+    # Cloud / DevOps / Infra
+    "aws", "azure", "gcp", "google cloud", "docker", "kubernetes", "k8s",
+    "terraform", "ansible", "chef", "puppet", "jenkins", "github actions",
+    "gitlab ci", "ci/cd", "linux", "unix", "nginx", "apache",
+    "cloudformation", "pulumi", "helm", "istio", "prometheus", "grafana",
+    "datadog", "elk", "elasticsearch",
+
+    # Databases
+    "sql", "nosql", "mongodb", "postgresql", "mysql", "sqlite", "redis",
+    "cassandra", "dynamodb", "firebase", "supabase", "neo4j", "oracle",
+    "snowflake", "bigquery", "dbt",
+
+    # Messaging / Streaming
+    "kafka", "rabbitmq", "celery", "sqs", "pubsub",
+
+    # Version Control / Collaboration
+    "git", "github", "gitlab", "bitbucket", "jira", "confluence",
+    "agile", "scrum", "kanban",
+
+    # CS Fundamentals
+    "data structures", "algorithms", "system design", "oop",
+    "object oriented", "design patterns", "microservices", "api design",
+    "distributed systems",
+
+    # Mobile
+    "android", "ios", "react native", "flutter",
+
+    # Security
+    "cybersecurity", "penetration testing", "oauth", "jwt", "ssl", "tls",
+
+    # Testing
+    "unit testing", "integration testing", "pytest", "jest", "selenium",
+    "cypress", "test driven development", "tdd",
 ]
 
 
-def extract_skills(text):
-    text = text.lower()
+def _normalize(text: str) -> str:
+    """Normalize text for skill matching: lowercase, collapse dashes/dots to spaces."""
+    return re.sub(r"[-./]", " ", text.lower())
+
+
+def extract_skills(text: str) -> list:
+    """
+    Extract skills from text using the SKILLS_DB.
+    """
+    norm_text = _normalize(text)
     found = set()
 
     for skill in SKILLS_DB:
-        if len(skill) <= 3:
-            pattern = rf"(?:^|\s){re.escape(skill)}(?:$|[\s,./])"
+        norm_skill = _normalize(skill)
+        if len(norm_skill.replace(" ", "")) <= 3:
+            pattern = rf"(?:^|\s){re.escape(norm_skill)}(?:$|[\s,./])"
         else:
-            pattern = rf"\b{re.escape(skill)}\b"
+            pattern = rf"\b{re.escape(norm_skill)}\b"
 
-        if re.search(pattern, text):
+        if re.search(pattern, norm_text):
             found.add(skill)
 
-    return list(found)
+    return sorted(found)
 
 
-def parse_date(date_str):
+# ---------------------------------------------------------------------------
+# DATE PARSING
+# ---------------------------------------------------------------------------
+
+MONTH_MAP = {
+    "jan": 1, "feb": 2, "mar": 3, "apr": 4,
+    "may": 5, "jun": 6, "jul": 7, "aug": 8,
+    "sep": 9, "sept": 9, "oct": 10, "nov": 11, "dec": 12,
+}
+
+
+def parse_date(date_str: str):
+    """
+    Parse a date string into a datetime object.
+    """
     date_str = date_str.strip().lower()
-    if date_str in ["present", "current", "now"]:
+    if date_str in ("present", "current", "now", "till date", "till present"):
         return datetime.now()
 
     date_str = re.sub(r"[,.]", "", date_str)
@@ -51,169 +130,127 @@ def parse_date(date_str):
 
         parts = date_str.split()
         if len(parts) >= 2:
-            month_map = {
-                "jan": 1, "feb": 2, "mar": 3, "apr": 4,
-                "may": 5, "jun": 6, "jul": 7, "aug": 8,
-                "sep": 9, "oct": 10, "nov": 11, "dec": 12
-            }
-            m = parts[0][:3]
-            y = parts[-1]
-            if m in month_map and y.isdigit():
-                return datetime(int(y), month_map[m], 1)
+            month_key = parts[0][:4]
+            month = MONTH_MAP.get(month_key) or MONTH_MAP.get(month_key[:3])
+            year_str = parts[-1]
+            if month and year_str.isdigit():
+                return datetime(int(year_str), month, 1)
     except Exception:
         pass
 
     return None
 
 
-def merge_ranges(ranges):
-    if not ranges:
-        return []
-
-    ranges.sort()
-    merged = [ranges[0]]
-
-    for start, end in ranges[1:]:
-        last_start, last_end = merged[-1]
-        if start <= last_end:
-            merged[-1] = (last_start, max(last_end, end))
-        else:
-            merged.append((start, end))
-
-    return merged
-
+# ---------------------------------------------------------------------------
+# EXPERIENCE EXTRACTION
+# ---------------------------------------------------------------------------
 
 EXPERIENCE_HEADERS = [
-    "work experience",
-    "experience",
-    "employment history",
-    "professional experience",
-    "work history"
+    "work experience", "employment history", "professional experience",
+    "work history", "career history", "professional background",
 ]
+WEAK_EXPERIENCE_HEADERS = ["experience"]
 
 STOP_HEADERS = [
-    "education",
-    "projects",
-    "skills",
-    "certifications",
-    "achievements",
-    "leadership",
-    "activities",
-    "interests",
-    "summary",
-    "coursework",
-    "hobbies"
+    "education", "academic", "projects", "skills", "certifications",
+    "achievements", "leadership", "activities", "interests", "summary",
+    "coursework", "hobbies", "awards", "publications", "references",
+    "volunteer", "extracurricular",
 ]
 
+MONTHS_PATTERN = (
+    r"(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|"
+    r"jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|"
+    r"dec(?:ember)?)"
+)
 
-def extract_experience(text):
-    text_l = text.lower()
+# Use hex escapes for dashes to avoid console encoding issues on Windows
+DATE_RANGE_PATTERN = (
+    rf"(\b{MONTHS_PATTERN}\.?\s*\d{{4}}|\b\d{{1,2}}[/-]\d{{4}}|\b\d{{4}})"
+    r"\s*(?:-|\u2013|\u2014|to)\s*"
+    rf"(present|current|now|till\s*date|till\s*present|\b{MONTHS_PATTERN}\.?\s*\d{{4}}|\b\d{{1,2}}[/-]\d{{4}}|\b\d{{4}})"
+)
 
-    # --------------------------------------------------
-    # 1. Explicit experience claim (senior override)
-    # --------------------------------------------------
+
+def _find_section(text_l: str, headers: list, strong=True) -> int | None:
+    for h in headers:
+        pattern = rf"(?:^|\n)\s*{re.escape(h)}[\s:.\-_]*(?:\n|$)"
+        m = re.search(pattern, text_l)
+        if not m and strong:
+            m = re.search(rf"(?:^|\n)([^\n]{{1,50}}{re.escape(h)}[^\n]{{0,20}})(?:\n|$)", text_l)
+            if m:
+                line = m.group(1).strip()
+                if len(line.split()) > 5:
+                    m = None
+        if m:
+            return m.end()
+    return None
+
+
+ROLE_KEYWORDS = [
+    "engineer", "developer", "intern", "analyst", "manager", "lead", "architect",
+    "designer", "consultant", "specialist", "scientist", "researcher",
+    "programmer", "technician", "associate", "officer", "administrator",
+    "coordinator", "trainee", "founder", "co-founder", "startup", "cto", "ceo"
+]
+
+def extract_experience(text: str) -> list:
+    """
+    Extract total professional experience in years.
+    """
+    # Nuclear ASCII-fication to prevent Windows terminal encoding crashes during traceback/logging
+    text_l = text.encode("ascii", "ignore").decode("ascii").lower()
+
     explicit = re.findall(
-        r"(\d+)\s*\+?\s*(?:years|yrs)\s+(?:of\s+)?experience",
+        r"(\d+)\s*\+?\s*(?:years?|yrs?)\s+(?:of\s+)?(?:professional\s+)?experience",
         text_l
     )
     if explicit:
         years = max(int(x) for x in explicit)
         return [f"{min(years, 40):.1f} Years"]
 
-    # Remove specific PDF artifacts
-    # Handle "w ork experience" specifically without strict boundaries (e.g. "JUnitW ORK EXPERIENCE")
-    text_l = re.sub(r"(?i)w ork\s+experience", "work experience", text_l)
-    text_l = re.sub(r"(?i)\bw ork\b", "work", text_l) # Fallback for other "w ork" occurrences
-    text_l = re.sub(r"(?i)\be xperience\b", "experience", text_l)
+    start = _find_section(text_l, EXPERIENCE_HEADERS, strong=True)
+    if start is None:
+        start = _find_section(text_l, WEAK_EXPERIENCE_HEADERS, strong=False)
 
-    # --------------------------------------------------
-    # 2. Locate WORK EXPERIENCE section
-    # --------------------------------------------------
-    # Split headers into strong (can assume header even if messy) and weak (need strict format)
-    strong_headers = [
-        "work experience", "employment history", "professional experience", "work history"
-    ]
-    weak_headers = ["experience"]
-
-    start = None
-    
-    # Try strong headers first (allow them to be anywhere in line if followed by newline/colon)
-    for h in strong_headers:
-        # Match header, allowing preceding chars, but enforcing end of header (colon or newline)
-        m = re.search(rf"{re.escape(h)}\s*(?::|\n|$)", text_l)
-        if m:
-            start = m.end()
-            break
-            
-    # Try weak headers if no strong found (must be at start of line)
-    if not start:
-        for h in weak_headers:
-            m = re.search(rf"(?:^|\n)\s*{re.escape(h)}\s*(?::|\n|$)", text_l)
-            if m:
-                # For "Experience", prevent matching "My Experience..."
-                # Check if the line is short (mostly just the header)
-                line_start = text_l.rfind('\n', 0, m.start()) + 1
-                line_content = text_l[line_start:m.end()].strip()
-                if len(line_content) < len(h) + 5: # Allow small prefix like numbering
-                    start = m.end()
-                    break
-
-
-    # ❌ No work section → zero experience
     if start is None:
         return ["0.0 Years"]
 
     end = len(text_l)
     for h in STOP_HEADERS:
-        m = re.search(rf"(?:^|\n)\s*{h}\s*:?\s*(?:\n|$)", text_l[start:])
+        m = re.search(rf"(?:^|\n)\s*{re.escape(h)}\s*(?::|\n|$)", text_l[start:])
         if m:
-            end = start + m.start()
-            break
-
-    section = text_l[start:end]
-
-    # Remove student / club / volunteer roles
-    NON_WORK_TERMS = [
-        "club", "society", "captain", "volunteer",
-        "student", "mentor", "committee", "sports"
-    ]
-
-    if any(term in section for term in NON_WORK_TERMS):
-        # If no real job keywords exist, discard section
-        if not re.search(r"(intern|engineer|developer|technician|assistant|analyst)", section):
-            return ["0.0 Years"]
-
-
-    # --------------------------------------------------
-    # 3. STRICT job date parsing (inside work only)
-    # --------------------------------------------------
-    # Regex to capture full month names (january, jan, sept, september, etc.)
-    months = r"(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)"
+            candidate_end = start + m.start()
+            if candidate_end > start:
+                end = min(end, candidate_end)
     
-    date_pattern = (
-        rf"(\b{months}\.?\s*\d{{4}}|\b\d{{1,2}}[/-]\d{{4}}|\b\d{{4}})"
-        r"\s*(?:-|–|to)\s*"
-        rf"(present|current|now|\b{months}\.?\s*\d{{4}}|\b\d{{1,2}}[/-]\d{{4}}|\b\d{{4}})"
-    )
+    work_section = text_l[start:end]
 
-    matches = re.findall(date_pattern, section)
+    # PRE-CLEANING: Actively remove non-work sections that might have bled through
+    for h in ["education", "projects", "leadership", "achievements"]:
+        m = re.search(rf"(?:^|\n)\s*{re.escape(h)}\s*(?::|\n|$)", work_section)
+        if m:
+            work_section = work_section[:m.start()]
+
     ranges = []
-
-    for s, e in matches:
-        d1 = parse_date(s)
-        d2 = parse_date(e)
-        if d1 and d2 and d2 >= d1:
-            ranges.append((d1, d2))
+    for match in re.finditer(DATE_RANGE_PATTERN, work_section):
+        s_str, e_str = match.groups()
+        context_start = max(0, match.start() - 120)
+        context_end = min(len(work_section), match.end() + 120)
+        context = work_section[context_start:context_end]
+        has_role = any(role in context for role in ROLE_KEYWORDS)
+        
+        if has_role:
+            d1 = parse_date(s_str)
+            d2 = parse_date(e_str)
+            if d1 and d2 and d2 >= d1:
+                ranges.append((d1, d2))
 
     if not ranges:
         return ["0.0 Years"]
 
-    # --------------------------------------------------
-    # 4. Merge overlaps (true experience timeline)
-    # --------------------------------------------------
     ranges.sort()
     merged = [ranges[0]]
-
     for s, e in ranges[1:]:
         last_s, last_e = merged[-1]
         if s <= last_e:
@@ -221,166 +258,153 @@ def extract_experience(text):
         else:
             merged.append((s, e))
 
-    total_months = 0
-    for s, e in merged:
-        total_months += (e.year - s.year) * 12 + (e.month - s.month)
-
-    years = total_months / 12.0
+    total_days = sum((e - s).days for s, e in merged)
+    years = total_days / 365.25
     return [f"{min(years, 40):.1f} Years"]
 
 
+# ---------------------------------------------------------------------------
+# EDUCATION EXTRACTION
+# ---------------------------------------------------------------------------
 
-def extract_education(text):
-    # Clean stuck headers (e.g. "enhancementsEDUCATION" or "threats.EDUCATION")
+EDUCATION_HEADERS = [
+    "education", "academic history", "educational background",
+    "academics", "qualifications", "academic qualifications",
+]
+
+EDUCATION_STOP_HEADERS = [
+    "experience", "work experience", "employment", "skills",
+    "projects", "certifications", "achievements", "summary",
+    "awards", "publications", "references",
+]
+
+
+def extract_education(text: str) -> str:
+    """
+    Detect highest degree from resume text.
+    """
     for header in ["EDUCATION", "SKILLS", "EXPERIENCE", "PROJECTS", "SUMMARY", "AWARDS"]:
-        text = re.sub(rf"([a-z\.,])({header})", r"\1 \n\2", text)
-        
-    text_l = text.lower()
-    
-    # Clean artifacts
-    text_l = re.sub(r"(?i)\be du\b", "edu", text_l)
-    # Handle spaced out headers
-    text_l = re.sub(r"(?i)\be\s+d\s+u\s+c\s+a\s+t\s+i\s+o\s+n\b", "education", text_l)
-    text_l = re.sub(r"(?i)\bs\s+k\s+i\s+l\s+l\s+s\b", "skills", text_l)
-    text_l = re.sub(r"(?i)\bp\s+r\s+o\s+j\s+e\s+c\s+t\s+s\b", "projects", text_l)
-    text_l = re.sub(r"(?i)\ba\s+w\s+a\s+r\s+d\s+s\b", "awards", text_l)
-    text_l = re.sub(r"(?i)\bs\s+u\s+m\s+m\s+a\s+r\s+y\b", "summary", text_l)
+        text = re.sub(rf"([a-z\.,])({header})", r"\1\n\2", text)
 
-    headers = ["education", "academic history", "educational background", "academics"]
-    
-    # 1. Locate Education Section
+    text_l = text.lower()
+    text_l = re.sub(r"\be\s+d\s+u\s+c\s+a\s+t\s+i\s+o\s+n\b", "education", text_l)
+
     start = None
-    for h in headers:
+    for h in EDUCATION_HEADERS:
         m = re.search(rf"(?:^|\n)\s*{re.escape(h)}\s*(?::|\n|$)", text_l)
         if m:
             start = m.end()
             break
-            
-    if start is None:
-        # Fallback: look for strong education keywords if no header found
-        # checking specifically for degree mentions near university/college
-        return "None"
 
-    # Stop at next section
-    others = [
-        "experience", "work experience", "employment", "skills", 
-        "projects", "certifications", "achievements", "summary", "awards"
-    ]
-    end = len(text_l)
-    for h in others:
-        m = re.search(rf"(?:^|\n)\s*{re.escape(h)}\s*(?::|\n|$)", text_l[start:])
-        if m:
-            end = start + m.start()
-            break
-            
-    section = text_l[start:end]
+    if start is not None:
+        end = len(text_l)
+        for h in EDUCATION_STOP_HEADERS:
+            m = re.search(rf"(?:^|\n)\s*{re.escape(h)}\s*(?::|\n|$)", text_l[start:])
+            if m:
+                candidate_end = start + m.start()
+                if candidate_end > start:
+                    end = min(end, candidate_end)
+        section = text_l[start:end]
+    else:
+        section = text_l
 
-    # 2. Parse Degree
-    # PhD
-    if re.search(r"\b(ph\.?d\.?|doctorate|doctor of)\b", section):
+    if re.search(r"\b(ph\.?\s*d\.?|doctorate|doctor of philosophy|d\.phil)\b", section):
         return "PhD"
-    
-    # Master
-    # Require dots for M.S. and M.A.; use special boundary handling because \b fails after dot
-    if re.search(r"\b(master of|master's|masters|mba)\b|\b(m\.s\.|m\.a\.)(?=\W|$)", section):
+    if re.search(r"\b(master(?:s|\s+of|\s+'s)?|m\.?b\.?a\.?|m\.?s\.?c?\.?|m\.?tech|m\.?eng|m\.?e\.)\b", section):
         return "Master"
-    
-    # Bachelor
-    if re.search(r"\b(bachelor of|bachelor's|bachelors|bs|ba)\b|\b(b\.?s\.?|b\.?a\.?|b\.?tech|b\.?eng)(?=\W|$)", section):
+    if re.search(r"\b(bachelor(?:s|\s+of|\s+'s)?|b\.?s\.?c?\.?|b\.?tech|b\.?e\.?(?!\s+and)|b\.?eng|b\.?a\.?)\b", section):
         return "Bachelor"
-        
-    # Associate
-    if re.search(r"\b(associate|a\.?s\.?|a\.?a\.?|as|aa)\b", section):
+    if re.search(r"\b(associate(?:\s+of|\s+degree)?|a\.s\.|a\.a\.)\b", section):
         return "Associate"
 
     return "None"
 
 
+# ---------------------------------------------------------------------------
+# TF-IDF SIMILARITY
+# ---------------------------------------------------------------------------
 
-
-def calculate_similarity(job_desc, resumes):
+def calculate_similarity(job_desc: str, resumes: list) -> list:
     if not resumes or not job_desc:
-        return []
-
+        return [0.0] * len(resumes)
     docs = [job_desc] + resumes
-    tfidf = TfidfVectorizer(stop_words="english")
+    tfidf = TfidfVectorizer(stop_words="english", ngram_range=(1, 2), min_df=1, sublinear_tf=True)
     matrix = tfidf.fit_transform(docs)
     scores = cosine_similarity(matrix[0:1], matrix[1:])
     return scores[0].tolist()
 
 
+# ---------------------------------------------------------------------------
+# COMPONENT SCORING
+# ---------------------------------------------------------------------------
+
 def calculate_component_scores(
-    job_desc_clean,
-    resumes_clean,
-    job_desc_raw,
-    resumes_raw,
-    weights
-):
-    similarity_scores = calculate_similarity(job_desc_clean, resumes_clean)
+    job_desc_clean: str,
+    resumes_clean: list,
+    job_desc_raw: str,
+    resumes_raw: list,
+    weights: dict,
+) -> list:
+    similarity_clean = calculate_similarity(job_desc_clean, resumes_clean)
+    similarity_raw = calculate_similarity(job_desc_raw, resumes_raw)
     jd_skills = set(extract_skills(job_desc_raw))
     results = []
 
     for i, raw in enumerate(resumes_raw):
         resume_skills = set(extract_skills(raw))
+        if jd_skills:
+            skills_score = len(jd_skills & resume_skills) / max(1, len(jd_skills))
+        else:
+            skills_score = min(1.0, len(resume_skills) / 10.0)
 
-        skills_score = (
-            len(jd_skills & resume_skills) / max(1, len(jd_skills))
-            if jd_skills else min(1.0, len(resume_skills) / 8.0)
-        )
-
-        years = float(re.search(r"\d+(\.\d+)?", extract_experience(raw)[0]).group())
-        exp_score = min(1.0, years / 10.0)
+        exp_str = extract_experience(raw)[0]
+        years = float(re.search(r"\d+(\.\d+)?", exp_str).group())
+        exp_score = min(1.0, years / 15.0)
 
         degree = extract_education(raw)
-        edu_map = {
-            "PhD": 1.0,
-            "Master": 0.8,
-            "Bachelor": 0.6,
-            "Associate": 0.4,
-            "None": 0.0
-        }
-        edu_score = edu_map.get(degree, 0.0)
+        edu_map = {"PhD": 1.0, "Master": 0.8, "Bachelor": 0.6, "Associate": 0.4, "None": 0.1}
+        edu_score = edu_map.get(degree, 0.1)
 
+        relevance_score = (similarity_clean[i] + similarity_raw[i]) / 2.0
         raw_score = (
-            weights["skills"] * skills_score +
-            weights["experience"] * exp_score +
-            weights["education"] * edu_score +
-            weights["relevance"] * similarity_scores[i]
+            weights["skills"] * skills_score
+            + weights["experience"] * exp_score
+            + weights["education"] * edu_score
+            + weights["relevance"] * relevance_score
         )
-
-        final = raw_score / (sum(weights.values()) or 1.0)
+        total_weight = sum(weights.values()) or 1.0
+        final = raw_score / total_weight
 
         results.append({
             "final_score": round(final * 100, 2),
             "skills_score": round(skills_score * 100, 1),
             "exp_score": round(exp_score * 100, 1),
             "edu_score": round(edu_score * 100, 1),
-            "relevance_score": round(similarity_scores[i] * 100, 1)
+            "relevance_score": round(relevance_score * 100, 1),
+            "degree": degree,
+            "years_experience": round(years, 1),
         })
 
     return results
 
 
-def calculate_ats_score(resume_text, job_keywords=None):
-    text = resume_text.lower()
+# ---------------------------------------------------------------------------
+# ATS SCORE
+# ---------------------------------------------------------------------------
+
+def calculate_ats_score(resume_raw: str, job_keywords: set = None) -> float:
+    text = resume_raw.encode("ascii", "ignore").decode("ascii").lower()
     wc = len(text.split())
-    resume_skills = set(extract_skills(resume_text))
-
-    skill_score = min(1.0, len(resume_skills) / 8.0)
-
-    sections = ["experience", "education", "skills", "projects", "summary"]
+    resume_skills = set(extract_skills(resume_raw))
+    skill_score = min(1.0, len(resume_skills) / 10.0)
+    sections = ["experience", "education", "skills", "projects", "summary", "certifications"]
     section_score = sum(1 for s in sections if s in text) / len(sections)
 
-    years = float(re.search(r"\d+(\.\d+)?", extract_experience(resume_text)[0]).group())
-    exp_score = 0.6 if years == 0 else 0.7 if years <= 2 else 0.85 if years <= 5 else 1.0
+    kw_score = 0.0
+    if job_keywords:
+        overlap = len(resume_skills & job_keywords)
+        kw_score = min(1.0, overlap / max(1, len(job_keywords)))
 
-    parse_score = 0.3 if wc < 80 else 0.6 if wc < 150 else 0.85 if wc < 300 else 1.0
-
-    final = (
-        0.40 * skill_score +
-        0.20 * section_score +
-        0.15 * exp_score +
-        0.15 * parse_score
-    )
-
+    parse_score = 0.3 if wc < 80 else 0.6 if wc < 200 else 0.85 if wc < 400 else 1.0
+    final = (0.40 * skill_score + 0.25 * section_score + 0.20 * kw_score + 0.15 * parse_score)
     return round(max(0.0, min(1.0, final)) * 100, 2)
