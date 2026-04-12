@@ -1,0 +1,156 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* Backgrounds */
+  --bg:    #070709;
+  --bg-1:  #0c0c10;
+  --bg-2:  #111116;
+  --bg-3:  #17171e;
+  --bg-4:  #1e1e28;
+  --bg-5:  #252533;
+
+  /* Borders */
+  --line:   rgba(255,255,255,0.055);
+  --line-2: rgba(255,255,255,0.09);
+  --line-3: rgba(255,255,255,0.15);
+
+  /* Text */
+  --ink:   #f0f0fa;
+  --ink-2: #8888a8;
+  --ink-3: #50506a;
+  --ink-4: #2e2e42;
+
+  /* Accent — violet */
+  --violet:       #7c6dfa;
+  --violet-dim:   rgba(124,109,250,0.10);
+  --violet-mid:   rgba(124,109,250,0.22);
+  --violet-glow:  rgba(124,109,250,0.30);
+
+  /* Semantic */
+  --emerald:      #00d68f;
+  --emerald-dim:  rgba(0,214,143,0.12);
+  --amber:        #f5a623;
+  --amber-dim:    rgba(245,166,35,0.12);
+  --rose:         #ff4f6d;
+  --rose-dim:     rgba(255,79,109,0.12);
+  --sky:          #38b6ff;
+  --sky-dim:      rgba(56,182,255,0.12);
+
+  /* Typography */
+  --font:  'Inter', system-ui, -apple-system, sans-serif;
+  --mono:  'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Radius */
+  --r-sm: 6px;
+  --r:    10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,0.04);
+  --shadow:    0 4px 24px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,0.04);
+  --shadow-lg: 0 16px 64px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,0.06);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root { height: 100%; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+#root {
+  background: var(--bg);
+  display: flex;
+  flex-direction: row;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────────── */
+::-webkit-scrollbar        { width: 4px; height: 4px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: var(--bg-5); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--line-3); }
+
+/* ─── Animations ────────────────────────────────────────────── */
+@keyframes fadeUp    { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+@keyframes fadeIn    { from { opacity:0; } to { opacity:1; } }
+@keyframes spin      { to   { transform:rotate(360deg); } }
+@keyframes shimmer   { 0%   { background-position:-800px 0; } 100% { background-position:800px 0; } }
+@keyframes pulse-dot { 0%,100% { opacity:.4; transform:scale(.85); } 50% { opacity:1; transform:scale(1); } }
+@keyframes barFill   { from { width:0; } }
+@keyframes countUp   { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+
+.anim-up  { animation: fadeUp  .45s cubic-bezier(.16,1,.3,1) both; }
+.anim-up1 { animation: fadeUp  .45s .06s cubic-bezier(.16,1,.3,1) both; }
+.anim-up2 { animation: fadeUp  .45s .12s cubic-bezier(.16,1,.3,1) both; }
+.anim-up3 { animation: fadeUp  .45s .18s cubic-bezier(.16,1,.3,1) both; }
+.anim-up4 { animation: fadeUp  .45s .24s cubic-bezier(.16,1,.3,1) both; }
+.anim-up5 { animation: fadeUp  .45s .30s cubic-bezier(.16,1,.3,1) both; }
+.anim-fade { animation: fadeIn .3s ease both; }
+
+.bar-fill { animation: barFill 1s cubic-bezier(.4,0,.2,1) both; }
+
+/* ─── Skeleton loader ───────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-3) 25%, var(--bg-4) 50%, var(--bg-3) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s infinite linear;
+  border-radius: var(--r-sm);
+}
+
+/* ─── Select reset ──────────────────────────────────────────── */
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2350506a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  padding-right: 28px !important;
+  cursor: pointer;
+}
+
+/* ─── Drag-over highlight ───────────────────────────────────── */
+.drop-active {
+  border-color: var(--violet) !important;
+  background: var(--violet-dim) !important;
+}
+
+/* ─── Tooltip ───────────────────────────────────────────────── */
+.tooltip-card {
+  background: var(--bg-3);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+  padding: 10px 13px;
+  box-shadow: var(--shadow-lg);
+  font-family: var(--font);
+  font-size: 11px;
+  color: var(--ink-2);
+  min-width: 160px;
+}
+
+/* ─── Table row hover ───────────────────────────────────────── */
+.trow { transition: background .13s; }
+.trow:hover { background: var(--bg-2) !important; }
+.trow:hover .row-actions { opacity: 1; }
+.row-actions { opacity: 0; transition: opacity .15s; }
+
+/* ─── Skill tag color groups ────────────────────────────────── */
+.tag-violet  { background: var(--violet-dim);  color: var(--violet);  border: 1px solid var(--violet-mid); }
+.tag-emerald { background: var(--emerald-dim); color: var(--emerald); border: 1px solid rgba(0,214,143,0.25); }
+.tag-sky     { background: var(--sky-dim);     color: var(--sky);     border: 1px solid rgba(56,182,255,0.25); }
+.tag-amber   { background: var(--amber-dim);   color: var(--amber);   border: 1px solid rgba(245,166,35,0.25); }
+
+/* ─── Sidebar collapse ──────────────────────────────────────── */
+.sidebar { transition: width .25s cubic-bezier(.4,0,.2,1); }
+
+/* ─── Pulse dot ─────────────────────────────────────────────── */
+.pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
