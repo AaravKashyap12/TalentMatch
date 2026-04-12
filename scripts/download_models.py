@@ -22,6 +22,9 @@ import sys
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
 log = logging.getLogger(__name__)
 
+# Ensure results are cached in the same dir as the runtime image
+os.environ["HF_HOME"] = "/app/.cache/huggingface"
+
 
 def download_spacy():
     log.info("Checking spaCy model en_core_web_sm ...")

@@ -15,10 +15,11 @@ numpy
 nltk
 scikit-learn
 sentence-transformers
-# Lightweight ONNX runtime instead of full PyTorch (~10 MB vs 800 MB+)
-# sentence-transformers uses ONNX automatically when onnxruntime is present
+# Lightweight ONNX runtime
 onnxruntime
-optimum[onnxruntime]
+
+# Cron / Keep-alive
+APScheduler
 
 # PDF extraction
 pypdf

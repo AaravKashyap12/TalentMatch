@@ -28,6 +28,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth.dependencies import require_auth
 from api.config import MAX_UPLOAD_SIZE, limiter
+
+logger = structlog.get_logger()
 from api.constants import PRIORITY_MAP
 from api.resume_parser import extract_text_from_pdf
 from api.schemas import (
@@ -193,34 +195,33 @@ async def scan_pdf(
             )
 
 
-    # --- Extract PDF text (async — each file in executor) ---
+    # --- Extract PDF text (Parallel — each file in executor) ---
     loop = asyncio.get_event_loop()
-    raw_resumes: List[str] = []
-    filenames:   List[str] = []
-
-    for file in files:
+    
+    async def process_single_file(file: UploadFile):
         content = await file.read()
         if len(content) > MAX_UPLOAD_SIZE:
             raise HTTPException(
                 status_code=413,
                 detail=f"{file.filename} exceeds the {MAX_UPLOAD_SIZE // (1024*1024)} MB limit",
             )
-
+        
         text = await loop.run_in_executor(None, partial(_extract_pdf_sync, content))
         if not text.strip():
             raise HTTPException(
                 status_code=400,
-                detail=(
-                    f"Could not extract text from {file.filename}. "
-                    "This usually means the PDF is scanned (image-only). "
-                    "Please use a text-based PDF or run it through an OCR tool first "
-                    "(e.g. Adobe Acrobat, Smallpdf, or tesseract)."
-                ),
+                detail=f"Could not extract text from {file.filename} (likely image-only PDF)."
             )
+        return text, file.filename or "resume.pdf"
 
-        raw_resumes.append(text)
-        filenames.append(file.filename or f"resume_{len(filenames)+1}.pdf")
-        log.info("pdf_extracted", filename=file.filename, chars=len(text))
+    # Run extraction for all files concurrently
+    process_results = await asyncio.gather(*[process_single_file(f) for f in files])
+    
+    raw_resumes = [r[0] for r in process_results]
+    filenames   = [r[1] for r in process_results]
+    
+    for text, fname in zip(raw_resumes, filenames):
+        logger.info("pdf_extracted", filename=fname, chars=len(text))
 
     # --- Run all ML work in a thread pool (non-blocking) ---
     component_scores, ats_scores, jd_required, jd_preferred = await loop.run_in_executor(

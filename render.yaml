@@ -3,6 +3,7 @@ services:
     name: talentmatch-api
     env: docker                         # use Dockerfile instead of raw Python env
     dockerfilePath: ./Dockerfile
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT --workers 1
     healthCheckPath: /api/v1/health     # Render polls this — 200 = ready
     envVars:
       - key: PYTHON_VERSION
