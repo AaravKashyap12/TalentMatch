@@ -3,25 +3,29 @@ import logging
 
 import spacy
 
+import threading
+
 logger = logging.getLogger(__name__)
 
-# Lazy-loaded singleton — never imported at module level to avoid
-# crashing workers or slowing cold-start deploys.
+# Lazy-loaded singleton with thread-safe lock
 _nlp = None
+_nlp_lock = threading.Lock()
 
 
 def get_nlp():
-    """Return the spaCy model, loading it once on first call."""
+    """Return the spaCy model, loading it once on first call (thread-safe)."""
     global _nlp
     if _nlp is None:
-        try:
-            _nlp = spacy.load("en_core_web_sm")
-            logger.info("spaCy model loaded: en_core_web_sm")
-        except OSError:
-            from spacy.cli import download
-            logger.warning("en_core_web_sm not found — downloading…")
-            download("en_core_web_sm")
-            _nlp = spacy.load("en_core_web_sm")
+        with _nlp_lock:
+            if _nlp is None:
+                try:
+                    _nlp = spacy.load("en_core_web_sm")
+                    logger.info("spaCy model loaded: en_core_web_sm")
+                except OSError:
+                    from spacy.cli import download
+                    logger.warning("en_core_web_sm not found — downloading…")
+                    download("en_core_web_sm")
+                    _nlp = spacy.load("en_core_web_sm")
     return _nlp
 
 

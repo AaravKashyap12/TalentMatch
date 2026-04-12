@@ -7,6 +7,7 @@ real ATS heuristics, robust experience parsing.
 import re
 import logging
 from datetime import datetime
+import threading
 from typing import List, Set, Dict, Any, Tuple, Optional
 
 import numpy as np
@@ -15,21 +16,25 @@ from sklearn.metrics.pairwise import cosine_similarity
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# SENTENCE TRANSFORMER — lazy loaded singleton  
+# SENTENCE TRANSFORMER — lazy loaded singleton with thread safety
 # ---------------------------------------------------------------------------
 
 _embedder = None
+_embedder_lock = threading.Lock()
 
 def get_embedder():
     global _embedder
     if _embedder is None:
-        try:
-            from sentence_transformers import SentenceTransformer
-            _embedder = SentenceTransformer("all-MiniLM-L6-v2")
-            logger.info("sentence-transformers model loaded: all-MiniLM-L6-v2")
-        except Exception as e:
-            logger.warning("sentence-transformers unavailable (%s) — falling back to TF-IDF", e)
-            _embedder = "tfidf"
+        with _embedder_lock:
+            # Double-check inside lock
+            if _embedder is None:
+                try:
+                    from sentence_transformers import SentenceTransformer
+                    _embedder = SentenceTransformer("all-MiniLM-L6-v2")
+                    logger.info("sentence-transformers model loaded: all-MiniLM-L6-v2")
+                except Exception as e:
+                    logger.warning("sentence-transformers unavailable (%s) — falling back to TF-IDF", e)
+                    _embedder = "tfidf"
     return _embedder
 
 
