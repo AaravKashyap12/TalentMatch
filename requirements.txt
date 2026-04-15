@@ -5,23 +5,18 @@ python-multipart
 pydantic[email]
 python-dotenv
 
-# NLP
+# NLP — lightweight pipeline (no torch/transformers)
 spacy
 en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
 thinc
 numpy
 
-# ML / similarity
-nltk
+# ML / similarity — TF-IDF only (no sentence-transformers, no torch, no onnxruntime)
+# Removing sentence-transformers + onnxruntime saves ~500 MB RAM on Render free tier.
+# TF-IDF cosine similarity is used instead — ~2 MB footprint, 0-second cold-start.
 scikit-learn
-sentence-transformers
-# Lightweight ONNX runtime
-onnxruntime
 
-# Cron / Keep-alive
-APScheduler
-
-# PDF extraction
+# PDF extraction — pypdf is primary (pure-Python, low RAM), pdfplumber as fallback
 pypdf
 pdfplumber
 
@@ -33,12 +28,11 @@ asyncpg
 # Auth / security
 python-dateutil
 
-# API / infra
+# API / infra  (APScheduler removed — keep-alive scheduler was pinning models in RAM)
 slowapi
 structlog
 
-# Testing (not needed in production — install with: pip install -r requirements.txt -r requirements-dev.txt)
-# Kept here for simplicity; move to requirements-dev.txt when desired
+# Testing
 pytest
 pytest-asyncio
 httpx

@@ -61,14 +61,12 @@ async def health():
     Lightweight liveness + readiness check.
     Returns 200 once models are loaded (checked via singleton state).
     """
-    from ml.matcher import _embedder
     from ml.nlp_utils import _nlp
     return {
         "status": "ok",
         "models": {
-            "spacy":   _nlp is not None,
-            "embedder": _embedder is not None and _embedder != "tfidf",
-            "embedder_mode": "tfidf" if _embedder == "tfidf" else "transformer",
+            "spacy":        _nlp is not None,
+            "embedder_mode": "tfidf",  # sentence-transformers removed; TF-IDF used
         },
     }
 
@@ -199,12 +197,24 @@ async def scan_pdf(
     loop = asyncio.get_event_loop()
     
     async def process_single_file(file: UploadFile):
-        content = await file.read()
-        if len(content) > MAX_UPLOAD_SIZE:
-            raise HTTPException(
-                status_code=413,
-                detail=f"{file.filename} exceeds the {MAX_UPLOAD_SIZE // (1024*1024)} MB limit",
-            )
+        # Read in chunks to avoid loading huge files fully into memory before
+        # the size check.  Render free tier has only 512 MB RAM total.
+        MAX_MB = MAX_UPLOAD_SIZE // (1024 * 1024)
+        chunks = []
+        total = 0
+        CHUNK = 64 * 1024  # 64 KB
+        while True:
+            chunk = await file.read(CHUNK)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > MAX_UPLOAD_SIZE:
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"{file.filename} exceeds the {MAX_MB} MB limit",
+                )
+            chunks.append(chunk)
+        content = b"".join(chunks)
         
         text = await loop.run_in_executor(None, partial(_extract_pdf_sync, content))
         if not text.strip():

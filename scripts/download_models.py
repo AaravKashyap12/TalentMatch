@@ -1,29 +1,24 @@
 #!/usr/bin/env python3
 """
-Pre-download all ML models so they are baked into the deployment image.
+Pre-download ML models into the Docker image so they are ready at startup.
 
-Run this during Docker build / Render build step — NOT at runtime.
-This eliminates the 30-60 second cold-start delay caused by downloading
-the sentence-transformer model on first request.
+NOTE: sentence-transformers has been removed (saved ~500 MB RAM on Render free tier).
+Only the spaCy en_core_web_sm model (~50 MB) is pre-downloaded now.
 
 Usage
 -----
   python scripts/download_models.py
 
-Render build command (render.yaml)
------------------------------------
-  pip install -r requirements.txt && python scripts/download_models.py
+Dockerfile build step
+---------------------
+  RUN python scripts/download_models.py
 """
 
 import logging
-import os
 import sys
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
 log = logging.getLogger(__name__)
-
-# Ensure results are cached in the same dir as the runtime image
-os.environ["HF_HOME"] = "/app/.cache/huggingface"
 
 
 def download_spacy():
@@ -39,23 +34,8 @@ def download_spacy():
         log.info("  Done.")
 
 
-def download_sentence_transformer():
-    model_name = os.getenv("SENTENCE_TRANSFORMER_MODEL", "all-MiniLM-L6-v2")
-    log.info("Checking sentence-transformer model: %s ...", model_name)
-    try:
-        from sentence_transformers import SentenceTransformer
-        # Loading the model here triggers the download if not cached
-        model = SentenceTransformer(model_name)
-        # Run a dummy encode to verify ONNX export works
-        _ = model.encode(["test sentence"], show_progress_bar=False)
-        log.info("  Model loaded and verified OK.")
-    except Exception as e:
-        log.error("  Failed to load sentence-transformer: %s", e)
-        sys.exit(1)
-
-
 if __name__ == "__main__":
     log.info("=== TalentMatch model pre-download ===")
     download_spacy()
-    download_sentence_transformer()
     log.info("=== All models ready ===")
+    log.info("NOTE: sentence-transformers removed — TF-IDF used for similarity.")

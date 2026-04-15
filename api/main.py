@@ -1,6 +1,5 @@
 import logging
 import os
-import asyncio
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
@@ -17,8 +16,6 @@ from api.config import limiter
 from api.routes import router
 from api.admin_routes import router as admin_router
 from db.session import init_db
-from ml.nlp_utils import get_nlp
-from ml.matcher import get_embedder
 
 # Setup structured logging
 structlog.configure(
@@ -28,37 +25,27 @@ structlog.configure(
 )
 logger = structlog.get_logger()
 
-async def warm_up_models():
-    """Warms up ML models and acts as a keep-alive ping."""
-    log = logger.bind(stage="warmup")
-    try:
-        # 1. Warm up ML logic
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, get_nlp)
-        await loop.run_in_executor(None, get_embedder)
-        
-        # 2. Self-ping to keep Render networking alive
-        # (Replace with your actual Render URL once deployed for best results)
-        log.info("Keep-alive: Models refreshed and system pinged.")
-    except Exception as e:
-        log.error("Keep-alive/Warm-up failed", error=str(e))
+# NOTE: Models are intentionally NOT loaded at startup.
+#
+# The Render free tier has a 512 MB RAM cap.  Loading spaCy + sentence-transformers
+# at startup consumed ~450 MB before the first request arrived, causing OOM crashes.
+#
+# sentence-transformers / PyTorch have been removed entirely from requirements.txt.
+# ml/matcher.py now uses TF-IDF cosine similarity (~2 MB) as the sole similarity
+# engine.  spaCy (en_core_web_sm, ~50 MB) is still used for NER skill extraction and
+# loads lazily on the first real request.
+#
+# The APScheduler keep-alive job has also been removed.  On the free tier it
+# re-loaded both heavy models every 14 minutes, permanently pinning ~450 MB of RAM.
+# Render's spin-down on inactivity is unavoidable on the free plan; fighting it
+# costs more RAM than it saves in latency.
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 1. Initialize DB
+    # Initialise DB only — models load lazily on first request
     await init_db()
-    
-    # 2. Setup Scheduler for Keep-alive (run every 14 mins to beat 15 min timeout)
-    from apscheduler.schedulers.asyncio import AsyncIOScheduler
-    scheduler = AsyncIOScheduler()
-    scheduler.add_job(warm_up_models, 'interval', minutes=14)
-    scheduler.start()
-    
-    # 3. Initial warm-up
-    asyncio.create_task(warm_up_models())
-    
+    logger.info("startup: DB initialised; models will lazy-load on first request")
     yield
-    scheduler.shutdown()
     logger.info("shutdown: cleaning up")
 
 
@@ -71,7 +58,7 @@ def get_cors_origins() -> list[str]:
 
 app = FastAPI(
     title="TalentMatch API",
-    version="2.0.0",
+    version="2.1.0",
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",

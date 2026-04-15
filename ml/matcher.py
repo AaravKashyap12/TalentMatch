@@ -1,7 +1,11 @@
 """
 Core scoring and extraction engine for TalentMatch.
-2026 edition: sentence-transformer embeddings, spaCy NER skill extraction,
-real ATS heuristics, robust experience parsing.
+
+Memory-optimised edition for Render free tier (512 MB RAM):
+- sentence-transformers / PyTorch removed (~400-600 MB saved).
+- TF-IDF cosine similarity used as the sole relevance engine (~2 MB).
+- get_embedder() retained as a no-op stub so existing call-sites don't break.
+- All other scoring logic (skills, experience, education, ATS) unchanged.
 """
 
 import re
@@ -16,25 +20,16 @@ from sklearn.metrics.pairwise import cosine_similarity
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# SENTENCE TRANSFORMER — lazy loaded singleton with thread safety
+# EMBEDDER STUB — kept for API compatibility; always returns "tfidf"
+# sentence-transformers removed to stay within Render free-tier 512 MB RAM.
 # ---------------------------------------------------------------------------
 
-_embedder = None
+_embedder = "tfidf"   # module-level so /health can inspect it
 _embedder_lock = threading.Lock()
 
+
 def get_embedder():
-    global _embedder
-    if _embedder is None:
-        with _embedder_lock:
-            # Double-check inside lock
-            if _embedder is None:
-                try:
-                    from sentence_transformers import SentenceTransformer
-                    _embedder = SentenceTransformer("all-MiniLM-L6-v2")
-                    logger.info("sentence-transformers model loaded: all-MiniLM-L6-v2")
-                except Exception as e:
-                    logger.warning("sentence-transformers unavailable (%s) — falling back to TF-IDF", e)
-                    _embedder = "tfidf"
+    """Returns 'tfidf'. sentence-transformers removed for memory reasons."""
     return _embedder
 
 
@@ -42,8 +37,6 @@ def get_embedder():
 # SKILLS — hybrid: spaCy NER + curated seed list for precision
 # ---------------------------------------------------------------------------
 
-# Seed list used for high-precision matching of known technical terms.
-# spaCy NER catches everything else.
 SKILLS_SEED = {
     # Languages
     "python","java","c++","c#","javascript","typescript","go","rust","swift",
@@ -86,7 +79,6 @@ SKILLS_SEED = {
     "git","github","gitlab","jira","agile","scrum","kanban",
 }
 
-# Synonyms for technical skills to ensure matching consistency
 SKILL_ALIASES = {
     "k8s": "kubernetes",
     "reactjs": "react",
@@ -109,27 +101,19 @@ def _normalize(text: str) -> str:
     return re.sub(r"[-./]", " ", text.lower())
 
 
-# FIX: blocklist of common false-positive NER entities — geographic places,
-# generic company/institution words, and common resume words spaCy mislabels as ORG/PRODUCT.
 _NER_BLOCKLIST = {
-    # Cities / countries / regions commonly appearing on resumes
     "india","usa","us","uk","canada","australia","germany","france","singapore",
     "london","new york","san francisco","seattle","austin","chicago","boston",
     "bangalore","hyderabad","mumbai","delhi","chennai","pune","new delhi",
     "california","texas","washington","new york city","nyc","sf","la",
-    # Generic company / institution words spaCy labels as ORG
     "university","college","institute","school","academy","foundation",
     "department","division","group","team","lab","laboratory","center","centre",
     "company","corporation","pvt","ltd","inc","llc","co","corp",
-    # Generic resume section words
     "summary","experience","education","skills","projects","achievements",
     "certifications","references","work","employment","career","profile",
-    # Months (sometimes tagged as entities)
     "january","february","march","april","may","june","july","august",
     "september","october","november","december",
-    # Other common false positives
     "present","current","remote","full time","part time","contract","freelance",
-    # ── Degree / education words — never a skill ──────────────────────────
     "bachelor","bachelors","bachelor's","bs","b.s","bsc","b.sc",
     "master","masters","master's","ms","m.s","msc","m.sc","mba","m.b.a",
     "phd","ph.d","doctorate","doctoral","associate","diploma","degree",
@@ -137,7 +121,6 @@ _NER_BLOCKLIST = {
     "computer science","information technology","information systems",
     "electrical engineering","mechanical engineering","civil engineering",
     "mathematics","statistics","physics","biology","chemistry",
-    # ── Job titles — never a skill ────────────────────────────────────────
     "software engineer","software developer","software development",
     "senior software engineer","junior software engineer",
     "full stack developer","backend developer","frontend developer",
@@ -146,7 +129,6 @@ _NER_BLOCKLIST = {
     "devops engineer","cloud engineer","security engineer",
     "web developer","mobile developer","ios developer","android developer",
     "intern","internship","trainee","fresher","entry level",
-    # ── JD boilerplate phrases ────────────────────────────────────────────
     "required","preferred","must have","nice to have","excellent",
     "strong","proficient","familiarity","knowledge","understanding",
     "experience with","years of experience","minimum","plus","bonus",
@@ -154,22 +136,13 @@ _NER_BLOCKLIST = {
     "analytical","detail oriented","fast learner","self motivated",
     "opportunity","position","role","responsibilities","requirements",
     "qualifications","candidate","applicant","hire","hiring",
-
 }
 
 
 def extract_skills(text: str) -> list:
-    """
-    Hybrid skill extraction:
-    1. Seed list matching (high precision for known tech terms)
-    2. spaCy NER to catch unknown tools, frameworks, libraries
-       — GPE (geographic) entities excluded entirely
-       — expanded blocklist suppresses city/company false positives
-    """
     found = set()
     norm = _normalize(text)
 
-    # 1 — Seed list
     for skill in SKILLS_SEED:
         ns = _normalize(skill)
         if len(ns.replace(" ", "")) <= 3:
@@ -179,20 +152,15 @@ def extract_skills(text: str) -> list:
         if re.search(pat, norm):
             found.add(skill)
 
-    # 2 — spaCy NER: extract ORG and PRODUCT entities as candidate skills.
-    # FIX: removed GPE label — geographic entities are never technical skills.
-    # FIX: added _NER_BLOCKLIST check to suppress company/city false positives.
     try:
         from ml.nlp_utils import get_nlp
         nlp = get_nlp()
-        doc = nlp(text[:8000])  # cap for performance
+        doc = nlp(text[:8000])
         for ent in doc.ents:
             if ent.label_ in ("ORG", "PRODUCT"):
                 val = ent.text.strip()
                 val_lower = val.lower()
-                # Filter: only keep short entities that look like tools
                 if 1 <= len(val.split()) <= 3 and len(val) <= 30:
-                    # Check if any word in the entity matches the blocklist
                     if set(val_lower.split()) & _NER_BLOCKLIST:
                         continue
                     if not re.search(
@@ -204,7 +172,6 @@ def extract_skills(text: str) -> list:
     except Exception as e:
         logger.debug("NER skill extraction failed: %s", e)
 
-    # Apply aliases (e.g., convert "k8s" to "kubernetes")
     final_skills = set()
     for s in found:
         final_skills.add(SKILL_ALIASES.get(s, s))
@@ -291,7 +258,6 @@ def _find_section(text_l: str, headers: list) -> int | None:
 def extract_experience(text: str) -> list:
     text_l = text.encode("ascii", "ignore").decode("ascii").lower()
 
-    # 1 — Explicit "X years experience" statements
     explicit = re.findall(
         r"(\d+\.?\d*)\s*\+?\s*(?:years?|yrs?)\s+(?:of\s+)?(?:professional\s+|relevant\s+)?experience",
         text_l
@@ -300,7 +266,6 @@ def extract_experience(text: str) -> list:
         years = max(float(x) for x in explicit)
         return [f"{min(years, 40):.1f} Years"]
 
-    # 2 — Parse date ranges from experience section
     start = _find_section(text_l, EXPERIENCE_HEADERS)
     if start is None:
         return ["0.0 Years"]
@@ -315,7 +280,6 @@ def extract_experience(text: str) -> list:
 
     work_section = text_l[start:end]
 
-    # Remove education/project bleed-through
     for h in ["education","projects","leadership","achievements"]:
         m = re.search(rf"(?:^|\n)\s*{re.escape(h)}\s*(?::|$)", work_section)
         if m:
@@ -325,24 +289,18 @@ def extract_experience(text: str) -> list:
     for match in re.finditer(DATE_RANGE_PATTERN, work_section, re.IGNORECASE):
         s_str, e_str = match.groups()
         ctx = work_section[max(0, match.start()-150):match.end()+150]
-        # FIX: use word boundaries so "founder" doesn't match "foundation",
-        # "associate" doesn't match "association", etc.
         has_role = any(re.search(rf"\b{re.escape(role)}\b", ctx) for role in ROLE_KEYWORDS)
         if has_role:
             d1 = parse_date(s_str)
             d2 = parse_date(e_str)
             if d1 and d2 and d2 >= d1:
-                    # Sanity check: a single role spanning >6 years is almost
-                    # certainly an education date (e.g. "2023–2027") bleeding
-                    # through the section boundary. Discard it.
-                    span_years = (d2 - d1).days / 365.25
-                    if span_years <= 6:
-                        ranges.append((d1, d2))
+                span_years = (d2 - d1).days / 365.25
+                if span_years <= 6:
+                    ranges.append((d1, d2))
 
     if not ranges:
         return ["0.0 Years"]
 
-    # Merge overlapping ranges (handles concurrent roles / consulting)
     ranges.sort()
     merged = [ranges[0]]
     for s, e in ranges[1:]:
@@ -401,8 +359,6 @@ def extract_education(text: str) -> str:
         return "PhD"
     if re.search(r"\b(master(?:s|'s)?|master\s+of|m\.b\.a\.?|m\.sc?\.?|m\.tech|m\.eng|mtech|meng)\b", section):
         return "Master"
-    # FIX: require explicit dots in short abbreviations (b.e., b.a.) to prevent
-    # matching common English words like "be" and "ba" mid-sentence.
     if re.search(
         r"\b(bachelor(?:s|\s+of|\s+'s)?|b\.s\.c?\.?|b\.tech|b\.e\.|b\.eng\.|b\.a\.)(?!\w)",
         section
@@ -414,34 +370,28 @@ def extract_education(text: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# SEMANTIC SIMILARITY — sentence-transformers with TF-IDF fallback
+# SEMANTIC SIMILARITY — TF-IDF cosine similarity
+# sentence-transformers removed: PyTorch alone uses ~400 MB on Render free tier.
+# TF-IDF with bigrams + sublinear_tf is a solid lightweight alternative.
 # ---------------------------------------------------------------------------
 
 def calculate_similarity(job_desc: str, resumes: list) -> list:
     """
-    Compute semantic similarity using sentence-transformers (all-MiniLM-L6-v2).
-    Falls back to TF-IDF cosine similarity if transformers are unavailable.
+    Compute TF-IDF cosine similarity between the job description and each resume.
+    ~2 MB footprint, no external model download, instant startup.
     """
     if not resumes or not job_desc:
         return [0.0] * len(resumes)
 
-    embedder = get_embedder()
-
-    if embedder != "tfidf":
-        try:
-            texts = [job_desc] + resumes
-            embeddings = embedder.encode(texts, show_progress_bar=False, batch_size=16)
-            jd_emb = embeddings[0:1]
-            res_embs = embeddings[1:]
-            scores = cosine_similarity(jd_emb, res_embs)[0]
-            return scores.tolist()
-        except Exception as e:
-            logger.warning("Embedding failed (%s), falling back to TF-IDF", e)
-
-    # TF-IDF fallback
     from sklearn.feature_extraction.text import TfidfVectorizer
     docs = [job_desc] + resumes
-    tfidf = TfidfVectorizer(stop_words="english", ngram_range=(1, 2), min_df=1, sublinear_tf=True)
+    tfidf = TfidfVectorizer(
+        stop_words="english",
+        ngram_range=(1, 2),
+        min_df=1,
+        sublinear_tf=True,
+        max_features=20_000,   # cap vocabulary to keep memory bounded
+    )
     matrix = tfidf.fit_transform(docs)
     scores = cosine_similarity(matrix[0:1], matrix[1:])
     return scores[0].tolist()
@@ -452,16 +402,6 @@ def calculate_similarity(job_desc: str, resumes: list) -> list:
 # ---------------------------------------------------------------------------
 
 def calculate_ats_score(resume_raw: str, job_keywords: set = None) -> float:
-    """
-    ATS score based on actual ATS failure modes:
-    - Contact info presence
-    - Standard section headers
-    - No tables/columns (detected via spacing patterns)
-    - Keyword density vs JD
-    - Length sanity
-    - No garbled text (PDF extraction artifacts)
-    - Standard date formats
-    """
     text = resume_raw
     text_l = text.lower()
     words = text_l.split()
@@ -475,12 +415,10 @@ def calculate_ats_score(resume_raw: str, job_keywords: set = None) -> float:
         if condition:
             score += weight
 
-    # Contact info (10pts) — handle both normal and spaced-out PDF text
-    email_compact = re.sub(r"\s+", "", text)  # collapse spaces for spaced PDFs
+    email_compact = re.sub(r"\s+", "", text)
     check(5, bool(re.search(r"[\w.+-]+@[\w-]+\.\w+", email_compact)))
     check(5, bool(re.search(r"(\+?\d[\d\s\-().]{7,}\d)", text)))
 
-    # Standard sections (30pts)
     sections = {
         "experience": ["experience", "employment", "work history"],
         "education":  ["education", "academic"],
@@ -492,21 +430,16 @@ def calculate_ats_score(resume_raw: str, job_keywords: set = None) -> float:
         has = any(re.search(rf"(?:^|\n)\s*{kw}", text_l) for kw in keywords)
         check(6, has)
 
-    # Parse quality checks (15pts)
-    # Garble: excessive multi-spaces relative to word count
     garble_ratio = len(re.findall(r"\s{3,}", text)) / max(wc, 1)
-    check(5, garble_ratio < 0.5)   # lenient — double-spaced PDFs are common
-    # Spaced-out chars (k i s n a) = PDF extraction artifact, penalise lightly
+    check(5, garble_ratio < 0.5)
     spaced_chars = len(re.findall(r"(?<=[a-zA-Z]) (?=[a-zA-Z])", text[:500]))
     check(5, spaced_chars < 20)
     non_ascii = sum(1 for c in text if ord(c) > 127) / max(len(text), 1)
     check(5, non_ascii < 0.05)
 
-    # Length sanity: 300-1200 words is ATS sweet spot (10pts)
     check(5, wc >= 300)
     check(5, wc <= 1200)
 
-    # Standard date formats (10pts)
     std_dates = re.findall(
         r"\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s*\d{4}\b",
         text_l
@@ -514,10 +447,6 @@ def calculate_ats_score(resume_raw: str, job_keywords: set = None) -> float:
     bad_dates = re.findall(r"\b\d{1,2}/\d{1,2}/\d{2,4}\b", text_l)
     check(10, len(std_dates) >= len(bad_dates))
 
-    # FIX: Keyword match vs JD — proportional scoring (0–25 pts).
-    # Previously this was binary: kw_ratio >= 0.5 → 25pts, else 0pts.
-    # A ratio of 0.49 was treated the same as 0.0, which is wrong.
-    # Now we award points linearly proportional to the overlap ratio.
     if job_keywords:
         resume_skills = set(extract_skills(resume_raw))
         overlap = len(resume_skills & job_keywords)
@@ -542,45 +471,33 @@ def calculate_component_scores(
     jd_skills: set | None = None,
     experience_cap_years: float = 15.0,
 ) -> list:
-    """
-    Score each resume against the JD across 4 components.
-    Uses semantic embeddings for relevance, hybrid NER+seed for skills.
-    """
-    # Semantic similarity (single batch encode — efficient)
     similarity_scores = calculate_similarity(job_desc_raw, resumes_raw)
 
     if jd_skills is None:
         jd_skills = set(extract_skills(job_desc_raw))
 
+    # TF-IDF scores are typically 0.0–0.6; rescale to 0–1
+    LOWER_BOUND = 0.0
+    UPPER_BOUND = 0.6
+
     results = []
     for i, raw in enumerate(resumes_raw):
         resume_skills = set(extract_skills(raw))
 
-        # FIX: when jd has no detectable skills, return 0.0 — not a padded reward.
-        # The old fallback min(1.0, resume_skill_count/10) rewarded any resume
-        # that listed 10+ skills regardless of relevance.
         if jd_skills:
             skills_score = len(jd_skills & resume_skills) / max(1, len(jd_skills))
         else:
             skills_score = 0.0
 
-        # Experience score
         exp_str = extract_experience(raw)[0]
         years = float(re.search(r"\d+(\.\d+)?", exp_str).group())
         exp_score = min(1.0, years / experience_cap_years)
 
-        # Education score
         degree = extract_education(raw)
         edu_map = {"PhD": 1.0, "Master": 0.8, "Bachelor": 0.6, "Associate": 0.4}
         edu_score = edu_map.get(degree, 0.3)
 
-        # FIX: Relevance rescale — replaced (score - 0.1) / 0.6 which hard-zeroed
-        # any cosine score below 0.1. The new formula uses empirical bounds for
-        # all-MiniLM-L6-v2 on resume/JD pairs (typically 0.15–0.85), preserving
-        # rank ordering and giving a meaningful 0–100 display value.
         raw_sim = float(similarity_scores[i])
-        LOWER_BOUND = 0.15
-        UPPER_BOUND = 0.85
         relevance_score = max(0.0, min(1.0, (raw_sim - LOWER_BOUND) / (UPPER_BOUND - LOWER_BOUND)))
 
         raw_score = (
@@ -600,16 +517,15 @@ def calculate_component_scores(
             "relevance_score":  round(relevance_score * 100, 1),
             "degree":           degree,
             "years_experience": round(years, 1),
-            # Cache parsed experience string so routes.py doesn't re-call
-            # extract_experience() — eliminates the duplicate parse.
             "experience_str":   exp_str,
             "resume_skills":    resume_skills,
         })
 
     return results
 
+
 # ---------------------------------------------------------------------------
-# STRUCTURED JD SCORING — extended version of calculate_component_scores
+# STRUCTURED JD SCORING
 # ---------------------------------------------------------------------------
 
 DEGREE_ORDER = {"None": 0, "Associate": 1, "Bachelor": 2, "Master": 3, "PhD": 4}
@@ -627,17 +543,6 @@ def calculate_component_scores_structured(
     min_years_experience: Optional[float] = None,
     required_degree: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    """
-    Extended scoring with structured JD support.
-
-    Differences from calculate_component_scores
-    -------------------------------------------
-    - required_skills vs preferred_skills weighted separately (80/20 split)
-    - min_years_experience: candidates below cap exp_score at 0.5
-    - required_degree: candidates below halve their edu_score
-    - missing_required_skills returned per candidate for frontend display
-    - meets_min_experience / meets_degree_req flags returned explicitly
-    """
     similarity_scores = calculate_similarity(job_desc_raw, resumes_raw)
 
     if jd_skills is None:
@@ -645,11 +550,14 @@ def calculate_component_scores_structured(
     if preferred_skills is None:
         preferred_skills = set()
 
+    # TF-IDF similarity bounds (empirical for resume/JD pairs)
+    LOWER_BOUND = 0.0
+    UPPER_BOUND = 0.6
+
     results = []
     for i, raw in enumerate(resumes_raw):
         resume_skills = set(extract_skills(raw))
 
-        # Skills — required weighted 80%, preferred 20%
         if jd_skills or preferred_skills:
             req_ratio  = len(jd_skills & resume_skills) / max(1, len(jd_skills)) if jd_skills else 0.0
             pref_ratio = len(preferred_skills & resume_skills) / max(1, len(preferred_skills)) if preferred_skills else 0.0
@@ -657,7 +565,6 @@ def calculate_component_scores_structured(
         else:
             skills_score = 0.0
 
-        # Experience
         exp_str = extract_experience(raw)[0]
         years = float(re.search(r"\d+(\.\d+)?", exp_str).group())
         exp_score = min(1.0, years / experience_cap_years)
@@ -668,7 +575,6 @@ def calculate_component_scores_structured(
             if not meets_min_exp:
                 exp_score = min(exp_score, 0.5)
 
-        # Education
         degree = extract_education(raw)
         edu_map = {"PhD": 1.0, "Master": 0.8, "Bachelor": 0.6, "Associate": 0.4}
         edu_score = edu_map.get(degree, 0.3)
@@ -681,9 +587,8 @@ def calculate_component_scores_structured(
             if not meets_degree_req:
                 edu_score = edu_score * 0.5
 
-        # Relevance
         raw_sim = float(similarity_scores[i])
-        relevance_score = max(0.0, min(1.0, (raw_sim - 0.15) / 0.70))
+        relevance_score = max(0.0, min(1.0, (raw_sim - LOWER_BOUND) / (UPPER_BOUND - LOWER_BOUND)))
 
         raw_score = (
             weights["skills"]     * skills_score

@@ -1,10 +1,12 @@
 services:
   - type: web
     name: talentmatch-api
-    env: docker                         # use Dockerfile instead of raw Python env
+    env: docker                         # use Dockerfile
     dockerfilePath: ./Dockerfile
+    # Single worker — multiple workers each load spaCy separately and exhaust
+    # the 512 MB Render free-tier RAM budget.
     startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT --workers 1
-    healthCheckPath: /api/v1/health     # Render polls this — 200 = ready
+    healthCheckPath: /api/v1/health
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
@@ -13,11 +15,11 @@ services:
           name: talentmatch-db
           property: connectionString
       - key: ADMIN_SECRET
-        generateValue: true             # Render generates a random value on first deploy
+        generateValue: true
       - key: CORS_ORIGINS
         value: "https://your-frontend.vercel.app"
       - key: MAX_UPLOAD_SIZE_MB
-        value: "20"
+        value: "10"
 
 databases:
   - name: talentmatch-db
