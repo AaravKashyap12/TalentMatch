@@ -19,23 +19,29 @@ from api.session_routes import router as session_router
 from db.models import User
 from db.session import init_db, AsyncSessionLocal
 
-# ── Supabase (optional) ───────────────────────────────────────────────────────
+# Supabase is optional at import time. Production config enables it; tests can
+# run without Supabase env vars because auth is covered through mocked tokens.
 try:
     from supabase import create_client
-    supabase_client = create_client(
-        os.getenv("SUPABASE_URL", ""),
-        os.getenv("SUPABASE_ANON_KEY", ""),
+    supabase_url = os.getenv("SUPABASE_URL", "")
+    supabase_anon_key = os.getenv("SUPABASE_ANON_KEY", "")
+    supabase_service_role_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    supabase_client = (
+        create_client(supabase_url, supabase_anon_key)
+        if supabase_url and supabase_anon_key
+        else None
     )
-    supabase_admin_client = create_client(
-        os.getenv("SUPABASE_URL", ""),
-        os.getenv("SUPABASE_SERVICE_ROLE_KEY", ""),
+    supabase_admin_client = (
+        create_client(supabase_url, supabase_service_role_key)
+        if supabase_url and supabase_service_role_key
+        else None
     )
 except ImportError:
     supabase_client = None
     supabase_admin_client = None
     logging.getLogger(__name__).warning("supabase package not installed")
 
-# ── Structured logging ────────────────────────────────────────────────────────
+# Structured logging
 try:
     processors = (
         [structlog.processors.KeyValueRenderer()]
@@ -50,7 +56,7 @@ logger = structlog.get_logger()
 
 # NOTE: ML models load lazily on first request (not at startup) to stay within
 # small production memory budgets. spaCy en_core_web_sm (~50 MB) loads on first scan.
-# TF-IDF (sklearn) is used for semantic similarity — no torch/transformers needed.
+# TF-IDF (sklearn) is used for semantic similarity; no torch/transformers needed.
 
 
 @asynccontextmanager
@@ -111,3 +117,4 @@ app.add_middleware(
 app.include_router(router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
 app.include_router(session_router, prefix="/api/v1")
+
