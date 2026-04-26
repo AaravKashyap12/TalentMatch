@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.eggs/
+*.pyc
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment
+.env
+.env.local
+.env.*.local
+DEPLOYMENT_STEPS.md
+
+# Logs
+*.log
+logs/
+scratch/
+
+# Frontend
+web/node_modules/
+web/dist/
+web/.vite/
+web/.vercel/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Render
+.render/
+
+# DigitalOcean local spec from abandoned deployment path
+.do/

@@ -1,0 +1,39 @@
+# Web framework
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic[email]
+python-dotenv
+
+# NLP — lazy-loaded, ~50 MB RAM on first request
+spacy
+en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
+thinc
+numpy
+
+# ML / similarity — TF-IDF only (sentence-transformers removed, saves ~500 MB RAM)
+scikit-learn
+
+# PDF extraction
+pypdf
+pdfplumber
+
+# Database — async SQLite (local) + PostgreSQL (production)
+sqlalchemy[asyncio]
+aiosqlite
+asyncpg
+psycopg[binary]
+
+# Auth / security
+python-dateutil
+PyJWT
+supabase
+
+# Rate limiting + structured logging
+slowapi
+structlog
+
+# Testing
+pytest
+pytest-asyncio
+httpx
