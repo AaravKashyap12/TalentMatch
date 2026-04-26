@@ -13,21 +13,6 @@ jobs:
     env:
       PYTHONPATH: ${{ github.workspace }}
 
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: talentmatch
-          POSTGRES_PASSWORD: talentmatch
-          POSTGRES_DB: talentmatch_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
     steps:
       - uses: actions/checkout@v4
 
@@ -42,15 +27,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Initialize database schema
-        env:
-          DATABASE_URL: postgresql+asyncpg://talentmatch:talentmatch@localhost:5432/talentmatch_test
-        run: |
-          python -c "import asyncio; from db.session import init_db; asyncio.run(init_db())"
-
       - name: Run pytest
-        env:
-          DATABASE_URL: postgresql+asyncpg://talentmatch:talentmatch@localhost:5432/talentmatch_test
         run: |
           pytest tests/ -v --tb=short -x
 
