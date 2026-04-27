@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowRight, BarChart3, CheckCircle2, FileSearch, GitCompare,
   Moon, ShieldCheck, Sun, Users, Zap,
 } from 'lucide-react'
 import BrandLockup, { BrandMark } from '../components/Brand'
+import { SITE_PAGES } from '../sitePages'
 
 function useTheme() {
   const [theme, setTheme] = useState(() => {
@@ -69,14 +70,17 @@ function Chip({ children, matched = false }) {
 export default function Landing({ onEnterApp }) {
   const navigate = useNavigate()
   const { theme, toggle } = useTheme()
-  const go = () => { if (onEnterApp) onEnterApp(); else navigate('/login') }
+  const go = () => {
+    onEnterApp?.()
+    navigate('/login')
+  }
 
   return (
     <div className="landing">
       <nav className="l-nav">
-        <a href="#" className="l-nav-logo" aria-label="TalentMatch home">
+        <Link to="/" className="l-nav-logo brand-link" aria-label="TalentMatch home">
           <BrandLockup />
-        </a>
+        </Link>
 
         <div className="l-nav-links">
           <a href="#features" className="l-nav-link">Features</a>
@@ -292,8 +296,10 @@ export default function Landing({ onEnterApp }) {
         </div>
         <span className="l-footer-copy">Copyright 2026 TalentMatch. All rights reserved.</span>
         <div className="l-footer-links">
-          {['Privacy', 'Terms', 'Docs', 'Status'].map(label => (
-            <a key={label} href="#" className="l-footer-link">{label}</a>
+          {SITE_PAGES.map(page => (
+            <Link key={page.path} to={page.path} className="l-footer-link">
+              {page.label}
+            </Link>
           ))}
         </div>
       </footer>

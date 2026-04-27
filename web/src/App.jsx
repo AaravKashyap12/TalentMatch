@@ -1,41 +1,53 @@
 import { useState, useEffect, Suspense, lazy } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import './styles.css'
-import Login   from './pages/Login'
+import Login from './pages/Login'
 import Landing from './pages/Landing'
-import Layout  from './components/Layout'
-import Toast   from './components/Toast'
+import Layout from './components/Layout'
+import Toast from './components/Toast'
 import { BrandMark } from './components/Brand'
 import { getSession, getCurrentUser, logout } from './api'
+import SiteInfoPage from './pages/SiteInfoPage'
+import { SITE_PAGES } from './sitePages'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
-const NewScan   = lazy(() => import('./pages/NewScan'))
-const Results   = lazy(() => import('./pages/Results'))
-const Compare   = lazy(() => import('./pages/Compare'))
-const History   = lazy(() => import('./pages/History'))
+const NewScan = lazy(() => import('./pages/NewScan'))
+const Results = lazy(() => import('./pages/Results'))
+const Compare = lazy(() => import('./pages/Compare'))
+const History = lazy(() => import('./pages/History'))
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
 
 function PageLoader() {
   return (
-    <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', minHeight:'60vh' }}>
+    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
       <div className="loader-ring" />
     </div>
   )
 }
 
-// FIX: Handle Supabase OAuth callback — Supabase sets tokens in the URL hash
 function OAuthCallback({ onSuccess }) {
   const navigate = useNavigate()
+
   useEffect(() => {
-    // Supabase JS SDK automatically handles the hash fragment on init
     getCurrentUser()
-      .then(u => {
-        onSuccess(u)
+      .then(user => {
+        onSuccess(user)
         navigate('/', { replace: true })
       })
       .catch(() => navigate('/login', { replace: true }))
-  }, [])
+  }, [navigate, onSuccess])
+
   return <PageLoader />
+}
+
+function SitePageRoutes({ embedded = false, onEnterApp }) {
+  return SITE_PAGES.map(page => (
+    <Route
+      key={page.path}
+      path={page.path}
+      element={<SiteInfoPage path={page.path} embedded={embedded} onEnterApp={onEnterApp} />}
+    />
+  ))
 }
 
 function AppShell({ user, onLogout, showToast }) {
@@ -45,35 +57,50 @@ function AppShell({ user, onLogout, showToast }) {
     <Layout user={user} onLogout={onLogout} showToast={showToast}>
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          <Route path="/"            element={<Dashboard onShowToast={showToast} />} />
-          <Route path="/scan"        element={
-            <NewScan onScanComplete={r => setScanResult(r)} onShowToast={showToast} />
-          } />
-          <Route path="/results"     element={<Results results={scanResult} onShowToast={showToast} />} />
+          <Route path="/" element={<Dashboard onShowToast={showToast} />} />
+          <Route
+            path="/scan"
+            element={<NewScan onScanComplete={result => setScanResult(result)} onShowToast={showToast} />}
+          />
+          <Route path="/results" element={<Results results={scanResult} onShowToast={showToast} />} />
           <Route path="/results/:id" element={<Results onShowToast={showToast} />} />
-          <Route path="/compare"     element={<Compare onShowToast={showToast} />} />
-          <Route path="/history"     element={<History onShowToast={showToast} />} />
-          <Route path="/admin"       element={<AdminDashboard onShowToast={showToast} />} />
-          <Route path="*"            element={<Navigate to="/" replace />} />
+          <Route path="/compare" element={<Compare onShowToast={showToast} />} />
+          <Route path="/history" element={<History onShowToast={showToast} />} />
+          <Route path="/admin" element={<AdminDashboard onShowToast={showToast} />} />
+          {SitePageRoutes({ embedded: true, onEnterApp: () => {} })}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
     </Layout>
   )
 }
 
+function PublicShell({ onEnterApp, onLoginSuccess }) {
+  return (
+    <Routes>
+      <Route path="/" element={<Landing onEnterApp={onEnterApp} />} />
+      <Route path="/login" element={<Login onLoginSuccess={onLoginSuccess} />} />
+      {SitePageRoutes({ embedded: false, onEnterApp })}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  )
+}
+
 export default function App() {
-  const [auth, setAuth]   = useState(null)  // null=loading, 'landing', false=login, true=authed
-  const [user, setUser]   = useState(null)
+  const [auth, setAuth] = useState(null)
+  const [user, setUser] = useState(null)
   const [toast, setToast] = useState(null)
 
-  useEffect(() => { checkSession() }, [])
+  useEffect(() => {
+    checkSession()
+  }, [])
 
   async function checkSession() {
     try {
       const session = await getSession()
       if (session) {
-        const u = await getCurrentUser()
-        setUser(u)
+        const currentUser = await getCurrentUser()
+        setUser(currentUser)
         setAuth(true)
       } else {
         setAuth('landing')
@@ -95,7 +122,9 @@ export default function App() {
   }
 
   async function handleLogout() {
-    try { await logout() } catch {}
+    try {
+      await logout()
+    } catch {}
     setAuth('landing')
     setUser(null)
     showToast('Signed out', 'info')
@@ -104,11 +133,11 @@ export default function App() {
   if (auth === null) {
     return (
       <div className="loading-screen">
-        <div style={{ textAlign:'center' }}>
-          <div style={{ display:'flex', justifyContent:'center', marginBottom:20 }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
             <BrandMark size="lg" />
           </div>
-          <div className="loader-ring" style={{ margin:'0 auto' }} />
+          <div className="loader-ring" style={{ margin: '0 auto' }} />
         </div>
       </div>
     )
@@ -116,17 +145,19 @@ export default function App() {
 
   return (
     <Router>
-      {auth === 'landing' && <Landing onEnterApp={() => setAuth(false)} />}
-      {auth === false     && <Login onLoginSuccess={handleLogin} />}
-      {auth === true      && (
-        <Routes>
-          {/* FIX: OAuth callback route */}
-          <Route path="/callback" element={<OAuthCallback onSuccess={u => { setUser(u); setAuth(true) }} />} />
-          <Route path="/*"        element={
-            <AppShell user={user} onLogout={handleLogout} showToast={showToast} />
-          } />
-        </Routes>
-      )}
+      <Routes>
+        <Route path="/callback" element={<OAuthCallback onSuccess={userData => { setUser(userData); setAuth(true) }} />} />
+        <Route
+          path="/*"
+          element={
+            auth === true ? (
+              <AppShell user={user} onLogout={handleLogout} showToast={showToast} />
+            ) : (
+              <PublicShell onEnterApp={() => setAuth(false)} onLoginSuccess={handleLogin} />
+            )
+          }
+        />
+      </Routes>
 
       {toast && (
         <div className="toast-container">

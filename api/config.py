@@ -3,7 +3,9 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 MAX_UPLOAD_SIZE = int(os.getenv("MAX_UPLOAD_SIZE_MB", "20")) * 1024 * 1024
-MAX_FILES_PER_SCAN = int(os.getenv("MAX_FILES_PER_SCAN", "15"))
+MAX_FILES_PER_SCAN = int(os.getenv("MAX_FILES_PER_SCAN", "20"))
+MAX_JOB_DESCRIPTION_CHARS = int(os.getenv("MAX_JOB_DESCRIPTION_CHARS", "10000"))
+MAX_JD_FILE_SIZE = int(os.getenv("MAX_JD_FILE_SIZE_KB", "256")) * 1024
 FREE_SCAN_LIMIT = int(os.getenv("FREE_SCAN_LIMIT", "5"))
 
 ENABLE_GROQ_JD_PARSING = os.getenv("ENABLE_GROQ_JD_PARSING", "true").lower() in {

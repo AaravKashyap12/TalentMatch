@@ -287,6 +287,49 @@ class TestAuth:
         assert data["free_scans_used"] == 0
 
     @pytest.mark.asyncio
+    async def test_scan_accepts_job_description_file(self, client, test_user):
+        _, raw_key = test_user
+        pdf = _minimal_text_pdf()
+        jd_body = b"Backend engineer role with strong Python, FastAPI, SQL, and API design experience."
+        r = await client.post(
+            "/api/v1/scan/pdf",
+            headers={"X-API-Key": raw_key},
+            data={
+                "role_title": "Backend Engineer",
+                "job_description": "",
+                "required_skills": "[]",
+                "preferred_skills": "[]",
+                "min_years_experience": "null",
+                "required_degree": "null",
+            },
+            files=[
+                ("jd_file", ("job.txt", io.BytesIO(jd_body), "text/plain")),
+                ("files", ("resume.pdf", io.BytesIO(pdf), "application/pdf")),
+            ],
+        )
+        assert r.status_code == 200, r.text
+
+    @pytest.mark.asyncio
+    async def test_scan_rejects_more_than_20_files(self, client, test_user):
+        _, raw_key = test_user
+        pdf = _minimal_text_pdf()
+        uploaded = [("files", (f"resume-{i}.pdf", io.BytesIO(pdf), "application/pdf")) for i in range(21)]
+        r = await client.post(
+            "/api/v1/scan/pdf",
+            headers={"X-API-Key": raw_key},
+            data={
+                "job_description": "Backend engineer role with strong Python, FastAPI, SQL, and API design experience.",
+                "required_skills": "[]",
+                "preferred_skills": "[]",
+                "min_years_experience": "null",
+                "required_degree": "null",
+            },
+            files=uploaded,
+        )
+        assert r.status_code == 400
+        assert "Maximum 20 per scan" in r.json()["detail"]
+
+    @pytest.mark.asyncio
     async def test_usage_returns_free_scan_quota(self, client, test_user):
         _, raw_key = test_user
         r = await client.get("/api/v1/usage", headers={"X-API-Key": raw_key})

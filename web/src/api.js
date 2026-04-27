@@ -134,14 +134,15 @@ async function apiFetch(path, options = {}) {
 // ── Scan endpoints ────────────────────────────────────────────────────────────
 
 export async function scanResumes({
-  roleTitle, jobDescription, files, priorities,
+  roleTitle, jobDescription, jdFile, files, priorities,
   requiredSkills = [], preferredSkills = [],
   minYearsExperience = null, requiredDegree = null,
   experienceCapYears = 15,
 }) {
   const token = await getAccessToken()
   const form = new FormData()
-  form.append('job_description', jobDescription)
+  form.append('job_description', jobDescription || '')
+  if (jdFile) form.append('jd_file', jdFile)
   if (roleTitle) form.append('role_title', roleTitle)
   form.append('required_skills',      JSON.stringify(requiredSkills))
   form.append('preferred_skills',     JSON.stringify(preferredSkills))

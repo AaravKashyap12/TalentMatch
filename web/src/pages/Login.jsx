@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   signupWithEmail,
   loginWithEmail,
@@ -130,7 +131,9 @@ export default function Login({ onLoginSuccess }) {
     <main className="auth-page">
       <section className="auth-showcase" aria-label="TalentMatch product highlights">
         <div className="auth-showcase-top">
-          <BrandLockup subtitle="Recruiting intelligence" />
+          <Link to="/" className="brand-link" aria-label="TalentMatch home">
+            <BrandLockup subtitle="Recruiting intelligence" />
+          </Link>
         </div>
 
         <div className="auth-showcase-copy">

@@ -4,6 +4,7 @@ import {
   LogOut, Search, ShieldCheck, BarChart3,
 } from 'lucide-react'
 import BrandLockup from './Brand'
+import { SITE_PAGES } from '../sitePages'
 
 const SHOW_ADMIN = import.meta.env.DEV || import.meta.env.VITE_ENABLE_ADMIN_DASHBOARD === 'true'
 
@@ -38,9 +39,9 @@ export default function Layout({ user, onLogout, showToast, children }) {
       {/* ── Sidebar ── */}
       <aside className="sidebar">
         {/* Logo */}
-        <div className="sidebar-logo">
+        <Link to="/" className="sidebar-logo brand-link" aria-label="TalentMatch dashboard">
           <BrandLockup subtitle="Recruiting intelligence" />
-        </div>
+        </Link>
 
         {/* Nav */}
         <nav className="sidebar-nav">
@@ -82,7 +83,7 @@ export default function Layout({ user, onLogout, showToast, children }) {
       {/* ── Main ── */}
       <main className="main-content">
         <div className="page-container">
-          <div className="app-topbar">
+        <div className="app-topbar">
             <div>
               <div className="workspace-label">
                 <span className="workspace-dot" />
@@ -104,6 +105,16 @@ export default function Layout({ user, onLogout, showToast, children }) {
             </div>
           </div>
           {children}
+          <footer className="app-footer">
+            <span className="app-footer-copy">TalentMatch workspace</span>
+            <div className="app-footer-links">
+              {SITE_PAGES.map(page => (
+                <Link key={page.path} to={page.path} className="app-footer-link">
+                  {page.label}
+                </Link>
+              ))}
+            </div>
+          </footer>
         </div>
       </main>
     </div>

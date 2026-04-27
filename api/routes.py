@@ -37,6 +37,8 @@ from api.config import (
     ENABLE_GROQ_JD_PARSING,
     FREE_SCAN_LIMIT,
     GROQ_API_KEY,
+    MAX_JD_FILE_SIZE,
+    MAX_JOB_DESCRIPTION_CHARS,
     MAX_UPLOAD_SIZE,
     MAX_FILES_PER_SCAN,
     is_dev_mode,
@@ -97,7 +99,9 @@ class ProfileCreate(BaseModel):
 
 
 @router.post("/profiles", status_code=201, tags=["auth"])
+@limiter.limit("10/minute")
 async def create_profile(
+    request: Request,
     body: ProfileCreate,
     current_user: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db),
@@ -118,7 +122,8 @@ async def create_profile(
 
 
 @router.get("/usage", response_model=UsageResponse, tags=["billing"])
-async def get_usage(current_user: User = Depends(require_auth)):
+@limiter.limit("60/minute")
+async def get_usage(request: Request, current_user: User = Depends(require_auth)):
     used = int(current_user.free_scans_used or 0)
     unlimited = is_dev_mode()
     return UsageResponse(
@@ -179,14 +184,23 @@ def _extract_pdf_sync(content: bytes) -> str:
     return extract_text_from_pdf(io.BytesIO(content))
 
 
+def _decode_jd_text(content: bytes) -> str:
+    for encoding in ("utf-8-sig", "utf-16", "utf-16-le", "utf-16-be", "latin-1"):
+        try:
+            return content.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    raise HTTPException(status_code=400, detail="Job description file could not be decoded.")
+
+
 # ── POST /scan/pdf ─────────────────────────────────────────────────────────────
 
 @router.post("/scan/pdf", response_model=ScanResponse, status_code=200)
-@limiter.limit("10/minute")
+@limiter.limit("30/minute")
 async def scan_pdf(
     request: Request,
     role_title:           str   = Form("Unnamed Scan"),
-    job_description:      str   = Form(...),
+    job_description:      str   = Form(""),
     required_skills:      str   = Form("[]"),
     preferred_skills:     str   = Form("[]"),
     min_years_experience: str   = Form("null"),
@@ -196,6 +210,7 @@ async def scan_pdf(
     experience_priority:  str   = Form("Medium"),
     education_priority:   str   = Form("Low"),
     relevance_priority:   str   = Form("Low"),
+    jd_file: UploadFile | None   = File(None),
     files: List[UploadFile]     = File(...),
     current_user: User          = Depends(require_auth),
     db: AsyncSession            = Depends(get_db),
@@ -218,10 +233,25 @@ async def scan_pdf(
     except json.JSONDecodeError as e:
         raise HTTPException(status_code=422, detail=f"Malformed JSON in form field: {e}")
 
+    if jd_file is not None:
+        jd_ext = (jd_file.filename or "").lower()
+        if not (jd_ext.endswith(".txt") or jd_ext.endswith(".md")):
+            raise HTTPException(status_code=400, detail="Job description file must be .txt or .md.")
+        jd_bytes = await jd_file.read()
+        if len(jd_bytes) > MAX_JD_FILE_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Job description file exceeds {MAX_JD_FILE_SIZE // 1024} KB limit",
+            )
+        job_description = _decode_jd_text(jd_bytes).strip()
+
     if len(job_description.strip()) < 20:
         raise HTTPException(status_code=400, detail="Job description is too short (min 20 chars)")
-    if len(job_description) > 10_000:
-        raise HTTPException(status_code=400, detail="Job description is too long (max 10,000 chars)")
+    if len(job_description) > MAX_JOB_DESCRIPTION_CHARS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Job description is too long (max {MAX_JOB_DESCRIPTION_CHARS:,} chars)",
+        )
     if not (1.0 <= experience_cap_years <= 40.0):
         raise HTTPException(status_code=400, detail="experience_cap_years must be 1–40")
 
@@ -445,7 +475,9 @@ async def scan_pdf(
 # ── GET /scans ─────────────────────────────────────────────────────────────────
 
 @router.get("/scans", response_model=List[ScanHistoryItem], tags=["history"])
+@limiter.limit("30/minute")
 async def list_scans(
+    request: Request,
     limit: int = 20,
     offset: int = 0,
     current_user: User   = Depends(require_auth),
@@ -476,7 +508,9 @@ async def list_scans(
 # ── GET /scans/{scan_id} ───────────────────────────────────────────────────────
 
 @router.get("/scans/{scan_id}", response_model=ScanDetail, tags=["history"])
+@limiter.limit("60/minute")
 async def get_scan(
+    request: Request,
     scan_id: str,
     current_user: User   = Depends(require_auth),
     db: AsyncSession     = Depends(get_db),
@@ -573,7 +607,9 @@ async def get_scan(
 # ── DELETE /scans/{scan_id} ────────────────────────────────────────────────────
 
 @router.delete("/scans/{scan_id}", status_code=204, tags=["history"])
+@limiter.limit("20/minute")
 async def delete_scan(
+    request: Request,
     scan_id: str,
     current_user: User = Depends(require_auth),
     db: AsyncSession   = Depends(get_db),

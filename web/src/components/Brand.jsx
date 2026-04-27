@@ -2,11 +2,11 @@ export function BrandMark({ size = 'md' }) {
   return (
     <div className={`brand-mark brand-mark--${size}`} aria-hidden="true">
       <svg className="brand-mark-glyph" viewBox="0 0 32 32" role="img">
-        <path className="brand-mark-link" d="M10.2 11.2 16 20.2l5.8-9" />
-        <circle className="brand-mark-node" cx="9.5" cy="9.5" r="3.2" />
-        <circle className="brand-mark-node" cx="22.5" cy="9.5" r="3.2" />
-        <circle className="brand-mark-node brand-mark-node--primary" cx="16" cy="22.5" r="3.8" />
-        <path className="brand-mark-check" d="m14.2 22.4 1.25 1.25 2.55-3" />
+        <rect className="brand-mark-bar brand-mark-bar--short" x="5.5" y="7" width="12" height="3.2" rx="1.6" />
+        <rect className="brand-mark-bar brand-mark-bar--long" x="5.5" y="14.4" width="18.5" height="3.2" rx="1.6" />
+        <rect className="brand-mark-bar brand-mark-bar--mid" x="5.5" y="21.8" width="10" height="3.2" rx="1.6" />
+        <circle className="brand-mark-badge" cx="24.6" cy="8.8" r="3.9" />
+        <path className="brand-mark-check" d="m22.9 8.9 1.25 1.2 2.55-3.05" />
       </svg>
     </div>
   )
