@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 import jwt
 import pytest
 import pytest_asyncio
+from cryptography.hazmat.primitives.asymmetric import rsa
 from httpx import AsyncClient, ASGITransport
 
 from api.main import app
@@ -233,6 +234,47 @@ class TestAuth:
             algorithm="HS256",
         )
         monkeypatch.setattr(auth_deps, "SUPABASE_JWT_SECRET", secret)
+
+        r = await client.get(
+            "/api/v1/usage",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert r.status_code == 200, r.text
+        data = r.json()
+        assert data["free_scan_limit"] == 5
+        assert data["free_scans_used"] == 0
+
+    @pytest.mark.asyncio
+    async def test_supabase_bearer_accepts_jwks_signed_token(self, client, monkeypatch):
+        import api.auth.dependencies as auth_deps
+
+        private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        public_key = private_key.public_key()
+        user_id = str(uuid.uuid4())
+        email = f"jwks-{uuid.uuid4()}@talentmatch.dev"
+        token = jwt.encode(
+            {
+                "sub": user_id,
+                "email": email,
+                "exp": datetime.now(timezone.utc) + timedelta(minutes=5),
+            },
+            private_key,
+            algorithm="RS256",
+            headers={"kid": "test-key"},
+        )
+
+        class StubSigningKey:
+            def __init__(self, key):
+                self.key = key
+
+        class StubJwkClient:
+            def get_signing_key_from_jwt(self, raw_token):
+                assert raw_token == token
+                return StubSigningKey(public_key)
+
+        monkeypatch.setattr(auth_deps, "SUPABASE_URL", "https://pdzommymdbiwrztclexi.supabase.co")
+        monkeypatch.setattr(auth_deps, "_get_supabase_jwk_client", lambda _: StubJwkClient())
 
         r = await client.get(
             "/api/v1/usage",

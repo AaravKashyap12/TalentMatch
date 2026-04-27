@@ -28,6 +28,7 @@ import hashlib
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 
 import jwt
 from fastapi import Cookie, Depends, HTTPException, Security, status
@@ -44,6 +45,7 @@ from db.session import get_db
 
 JWT_SECRET = os.getenv("JWT_SECRET", "change-me-in-production")
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = int(os.getenv("JWT_EXPIRATION_HOURS", "24"))
 SUPABASE_JWT_LEEWAY_SECONDS = int(os.getenv("SUPABASE_JWT_LEEWAY_SECONDS", "120"))
@@ -126,19 +128,8 @@ def verify_supabase_claims(token: str) -> dict:
     if token == "mock-token" and dev_mode:
         return {"sub": "dev-id", "email": "dev@local"}
 
-    if not SUPABASE_JWT_SECRET:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Supabase JWT secret not configured",
-        )
-    
     try:
-        payload = jwt.decode(
-            token,
-            SUPABASE_JWT_SECRET,
-            algorithms=[JWT_ALGORITHM],
-            leeway=SUPABASE_JWT_LEEWAY_SECONDS,
-        )
+        payload = _decode_supabase_token(token)
         if payload.get("sub") is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -150,6 +141,11 @@ def verify_supabase_claims(token: str) -> dict:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Supabase token expired.",
         )
+    except jwt.PyJWKClientError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Supabase token.",
+        )
     except jwt.InvalidTokenError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -160,6 +156,64 @@ def verify_supabase_claims(token: str) -> dict:
 def verify_supabase_token(token: str) -> str:
     """Verify a Supabase JWT token and return its user id."""
     return verify_supabase_claims(token)["sub"]
+
+
+def _get_supabase_token_algorithm(token: str) -> str:
+    header = jwt.get_unverified_header(token)
+    return header.get("alg") or JWT_ALGORITHM
+
+
+def _supabase_jwks_url() -> str:
+    if not SUPABASE_URL:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Supabase URL not configured",
+        )
+    return f"{SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
+
+
+@lru_cache(maxsize=4)
+def _get_supabase_jwk_client(jwks_url: str) -> jwt.PyJWKClient:
+    return jwt.PyJWKClient(
+        jwks_url,
+        cache_keys=True,
+        cache_jwk_set=True,
+        lifespan=300,
+        timeout=10,
+    )
+
+
+def _decode_supabase_hs256(token: str) -> dict:
+    if not SUPABASE_JWT_SECRET:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Supabase JWT secret not configured",
+        )
+    return jwt.decode(
+        token,
+        SUPABASE_JWT_SECRET,
+        algorithms=[JWT_ALGORITHM],
+        leeway=SUPABASE_JWT_LEEWAY_SECONDS,
+    )
+
+
+def _decode_supabase_with_jwks(token: str, algorithm: str) -> dict:
+    jwk_client = _get_supabase_jwk_client(_supabase_jwks_url())
+    signing_key = jwk_client.get_signing_key_from_jwt(token)
+    return jwt.decode(
+        token,
+        signing_key.key,
+        algorithms=[algorithm],
+        options={"verify_aud": False},
+        leeway=SUPABASE_JWT_LEEWAY_SECONDS,
+    )
+
+
+def _decode_supabase_token(token: str) -> dict:
+    algorithm = _get_supabase_token_algorithm(token)
+    if algorithm == JWT_ALGORITHM:
+        return _decode_supabase_hs256(token)
+    return _decode_supabase_with_jwks(token, algorithm)
 
 
 _bearer_scheme = HTTPBearer(auto_error=False)
