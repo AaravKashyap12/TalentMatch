@@ -121,9 +121,11 @@ async function apiFetch(path, options = {}) {
   })
   if (res.status === 204) return null
   if (!res.ok) {
-    if (res.status === 401) throw new Error('Session expired. Please sign in again.')
     let detail = `Request failed (${res.status})`
     try { const err = await res.json(); detail = err.detail || detail } catch {}
+    if (res.status === 401 && detail === `Request failed (${res.status})`) {
+      detail = 'Session expired. Please sign in again.'
+    }
     throw new Error(detail)
   }
   return res.json()
@@ -158,9 +160,11 @@ export async function scanResumes({
     body: form,
   })
   if (!res.ok) {
-    if (res.status === 401) throw new Error('Session expired. Please sign in again.')
     let detail = `Scan failed (${res.status})`
     try { const err = await res.json(); detail = err.detail || detail } catch {}
+    if (res.status === 401 && detail === `Scan failed (${res.status})`) {
+      detail = 'Session expired. Please sign in again.'
+    }
     throw new Error(detail)
   }
   return res.json()

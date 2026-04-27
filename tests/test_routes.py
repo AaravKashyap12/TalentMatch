@@ -216,6 +216,35 @@ class TestAuth:
         assert data["name"] == "Profile Name"
 
     @pytest.mark.asyncio
+    async def test_supabase_bearer_tolerates_small_clock_skew(self, client, monkeypatch):
+        import api.auth.dependencies as auth_deps
+
+        secret = "test-supabase-secret-with-32-bytes"
+        user_id = str(uuid.uuid4())
+        email = f"skew-{uuid.uuid4()}@talentmatch.dev"
+        token = jwt.encode(
+            {
+                "sub": user_id,
+                "email": email,
+                "iat": datetime.now(timezone.utc) + timedelta(seconds=45),
+                "exp": datetime.now(timezone.utc) + timedelta(minutes=5),
+            },
+            secret,
+            algorithm="HS256",
+        )
+        monkeypatch.setattr(auth_deps, "SUPABASE_JWT_SECRET", secret)
+
+        r = await client.get(
+            "/api/v1/usage",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert r.status_code == 200, r.text
+        data = r.json()
+        assert data["free_scan_limit"] == 5
+        assert data["free_scans_used"] == 0
+
+    @pytest.mark.asyncio
     async def test_usage_returns_free_scan_quota(self, client, test_user):
         _, raw_key = test_user
         r = await client.get("/api/v1/usage", headers={"X-API-Key": raw_key})

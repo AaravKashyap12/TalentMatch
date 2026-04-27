@@ -46,6 +46,7 @@ JWT_SECRET = os.getenv("JWT_SECRET", "change-me-in-production")
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = int(os.getenv("JWT_EXPIRATION_HOURS", "24"))
+SUPABASE_JWT_LEEWAY_SECONDS = int(os.getenv("SUPABASE_JWT_LEEWAY_SECONDS", "120"))
 
 # ---------------------------------------------------------------------------
 # Key format & hashing
@@ -135,7 +136,8 @@ def verify_supabase_claims(token: str) -> dict:
         payload = jwt.decode(
             token,
             SUPABASE_JWT_SECRET,
-            algorithms=[JWT_ALGORITHM]
+            algorithms=[JWT_ALGORITHM],
+            leeway=SUPABASE_JWT_LEEWAY_SECONDS,
         )
         if payload.get("sub") is None:
             raise HTTPException(
@@ -239,22 +241,31 @@ async def require_auth(
 
     # Try Authorization: Bearer header (Supabase or session token)
     if bearer:
+        bearer_error: HTTPException | None = None
+
         # Try Supabase token first (if configured)
         if SUPABASE_JWT_SECRET:
             try:
                 claims = verify_supabase_claims(bearer.credentials)
                 return await _get_or_create_supabase_user(db, claims)
-            except HTTPException:
-                # Try session token as fallback
-                pass
+            except HTTPException as exc:
+                # Try session token as fallback before failing the request.
+                bearer_error = exc
         
         # Try session token as fallback
         try:
             user_id = verify_session_token(bearer.credentials)
             return await _get_active_user(db, user_id)
-        except HTTPException:
-            # Bearer token invalid, fall through to API key
-            pass
+        except HTTPException as exc:
+            # Keep the first bearer auth failure so the client gets a useful error.
+            if bearer_error is None:
+                bearer_error = exc
+
+        if bearer_error and not api_key:
+            raise HTTPException(
+                status_code=bearer_error.status_code,
+                detail=bearer_error.detail,
+            )
 
     # Fall back to API key auth
     if not api_key:
