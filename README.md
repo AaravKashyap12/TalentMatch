@@ -164,4 +164,6 @@ TalentMatch is a **production-ready MVP** built for AI-assisted recruiting workf
 
 ## License
 
-MIT
+MIT---
+### Portfolio
+See more of my work at [https://www.aaravkashyap.live/](https://www.aaravkashyap.live/).
